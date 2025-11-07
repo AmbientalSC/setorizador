@@ -65,7 +65,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
             <MapSizeFixer />
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {/* GPS Trail - Green polyline showing device path */}
             {positionHistory.length > 1 && (
@@ -92,7 +92,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
                         data={sectorGeoJSON}
                         ref={geoJsonRef}
                         style={() => ({
-                            color: '#3388ff',
+                            color: '#ff0000',
                             weight: 3,
                             opacity: 0.8,
                         })}

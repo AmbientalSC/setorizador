@@ -150,16 +150,16 @@ function App() {
         <div className="flex flex-col md:flex-row h-screen bg-gray-800 text-white font-sans">
             {/* Login Modal */}
             {!user && loginError !== null && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50">
                     <Login onLogin={handleLogin} error={loginError} isLoading={loginLoading} onClose={closeLoginModal} />
                 </div>
             )}
 
-            {/* Login Button - Top Right */}
+            {/* Login Button - Top Right (Mobile: inside top bar area) */}
             {!user && (
                 <button
                     onClick={openLoginModal}
-                    className="fixed top-4 right-4 z-[1000] px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md shadow-lg text-white font-medium"
+                    className="fixed top-3 right-3 z-[800] px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-700 rounded-md shadow-lg text-white font-medium text-sm md:text-base"
                 >
                     Admin Login
                 </button>
@@ -177,7 +177,7 @@ function App() {
                 user={user}
                 onLogout={handleLogout}
             />
-            <main className="flex-1 h-full w-full relative">
+            <main className="flex-1 h-full w-full relative pt-[120px] md:pt-0">
                 {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
                 <MapComponent userPosition={position} positionHistory={positionHistory} sectorGeoJSON={sectorGeoJSON} />
             </main>

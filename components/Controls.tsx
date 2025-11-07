@@ -59,40 +59,77 @@ export const Controls: React.FC<ControlsProps> = ({
 
     return (
         <>
-            {/* Toggle Button - Positioned to not overlap title */}
-            <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className={`fixed z-[1000] p-3 bg-blue-600 hover:bg-blue-700 rounded-md shadow-xl text-white border-2 border-blue-400 transition-all duration-300 ${isCollapsed ? 'top-4 left-4' : 'top-24 left-4'
-                    }`}
-                aria-label="Toggle menu"
-                style={{ width: '52px', height: '52px' }}
-            >
-                {isCollapsed ? (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                ) : (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
+            {/* Mobile Top Bar with Selectors */}
+            <div className="md:hidden fixed top-0 left-0 right-0 z-[700] bg-gray-900 border-b border-gray-700 shadow-lg">
+                <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between mb-2">
+                        <h1 className="text-lg font-bold text-white">GeoVisualizer</h1>
+                        {user && (
+                            <button
+                                onClick={onLogout}
+                                className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-300"
+                            >
+                                Logout
+                            </button>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <select
+                                value={selectedCityId}
+                                onChange={(e) => onCityChange(e.target.value)}
+                                disabled={isLoading.cities}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                                <option value="">{isLoading.cities ? 'Loading...' : 'City'}</option>
+                                {cities.map((city) => (
+                                    <option key={city.id} value={city.id}>
+                                        {city.nome}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <select
+                                value={selectedSectorName}
+                                onChange={(e) => onSectorChange(e.target.value)}
+                                disabled={!selectedCityId || isLoading.sectors}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                <option value="">{isLoading.sectors ? 'Loading...' : 'Sector'}</option>
+                                {sectors.map((sector) => (
+                                    <option key={sector.id} value={sector.id}>
+                                        {sector.nome}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    {isLoading.geojson && (
+                        <div className="flex items-center justify-center space-x-2 text-blue-300 text-xs py-1">
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>Loading...</span>
+                        </div>
+                    )}
+                    {user && (
+                        <button
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                            className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white font-medium"
+                        >
+                            {isCollapsed ? 'Show Admin Panel' : 'Hide Admin Panel'}
+                        </button>
+                    )}
+                </div>
+                {/* Mobile Admin Panel - Collapsible */}
+                {user && !isCollapsed && (
+                    <div className="border-t border-gray-700 p-3 bg-gray-800">
+                        <AdminUploader onDataUploaded={onDataUploaded} />
+                    </div>
                 )}
-            </button>
+            </div>
 
-            {/* Overlay to close menu when clicked outside */}
-            {!isCollapsed && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-[500] md:hidden"
-                    onClick={() => setIsCollapsed(true)}
-                />
-            )}
-
-            <aside className={`
-                bg-gray-900 p-4 space-y-6 overflow-y-auto shadow-lg
-                transition-transform duration-300 ease-in-out
-                w-80 lg:w-96
-                fixed md:relative top-0 left-0 h-full z-[600]
-                ${isCollapsed ? '-translate-x-full' : 'translate-x-0'}
-            `}>
+            {/* Desktop Sidebar */}
+            <aside className="hidden md:block bg-gray-900 p-4 space-y-6 overflow-y-auto shadow-lg w-80 lg:w-96">
                 <header className="flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-white">GeoVisualizer</h1>
