@@ -1,0 +1,7 @@
+{
+  "name": "GeoJSON Sector Visualizer",
+  "description": "An application to upload, process, and visualize large Geo-located GeoJSON files. Users can select a city and a specific sector to view its geometry on a map, alongside their real-time GPS location. The app is optimized for performance by splitting large GeoJSON files into smaller, sector-specific documents.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
