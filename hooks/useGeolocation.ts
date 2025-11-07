@@ -8,6 +8,7 @@ interface Position {
 
 export const useGeolocation = () => {
     const [position, setPosition] = useState<Position | null>(null);
+    const [positionHistory, setPositionHistory] = useState<Position[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -26,10 +27,12 @@ export const useGeolocation = () => {
 
         const watcher = navigator.geolocation.watchPosition(
             (pos) => {
-                setPosition({
+                const newPosition = {
                     lat: pos.coords.latitude,
                     lng: pos.coords.longitude,
-                });
+                };
+                setPosition(newPosition);
+                setPositionHistory(prev => [...prev, newPosition]);
                 setError(null);
             },
             (err) => {
@@ -48,5 +51,5 @@ export const useGeolocation = () => {
         };
     }, []);
 
-    return { position, error };
+    return { position, positionHistory, error };
 };

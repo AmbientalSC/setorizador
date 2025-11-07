@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, Polyline, useMap } from 'react-leaflet';
 import type { Map } from 'leaflet';
 import L from 'leaflet';
 import type { GeoJSONFeatureCollection } from '../types';
@@ -39,6 +39,7 @@ const FitBounds: React.FC<{ geoJSON: GeoJSONFeatureCollection | null }> = ({ geo
 
 interface MapComponentProps {
     userPosition: { lat: number; lng: number } | null;
+    positionHistory: { lat: number; lng: number }[];
     sectorGeoJSON: GeoJSONFeatureCollection | null;
 }
 
@@ -52,7 +53,7 @@ const userIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, sectorGeoJSON }) => {
+export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positionHistory, sectorGeoJSON }) => {
     const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
     // Using key on GeoJSON component to force re-render when data changes.
@@ -66,6 +67,17 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, sector
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
+            {/* GPS Trail - Green polyline showing device path */}
+            {positionHistory.length > 1 && (
+                <Polyline
+                    positions={positionHistory.map(pos => [pos.lat, pos.lng])}
+                    pathOptions={{
+                        color: '#00ff00',
+                        weight: 4,
+                        opacity: 0.8,
+                    }}
+                />
+            )}
             {userPosition && (
                 <Marker position={[userPosition.lat, userPosition.lng]} icon={userIcon}>
                     <Popup>

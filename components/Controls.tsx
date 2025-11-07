@@ -59,10 +59,11 @@ export const Controls: React.FC<ControlsProps> = ({
 
     return (
         <>
-            {/* Toggle Button - Always visible in top left */}
+            {/* Toggle Button - Positioned to not overlap title */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="fixed top-4 left-4 z-[1000] p-3 bg-blue-600 hover:bg-blue-700 rounded-md shadow-xl text-white border-2 border-blue-400"
+                className={`fixed z-[1000] p-3 bg-blue-600 hover:bg-blue-700 rounded-md shadow-xl text-white border-2 border-blue-400 transition-all duration-300 ${isCollapsed ? 'top-4 left-4' : 'top-24 left-4'
+                    }`}
                 aria-label="Toggle menu"
                 style={{ width: '52px', height: '52px' }}
             >

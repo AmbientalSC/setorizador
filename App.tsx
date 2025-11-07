@@ -10,7 +10,7 @@ import type { City, Sector, GeoJSONFeatureCollection } from './types';
 import type { User } from 'firebase/auth';
 
 function App() {
-    const { position, error: geoError } = useGeolocation();
+    const { position, positionHistory, error: geoError } = useGeolocation();
     const [user, setUser] = useState<User | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [loginError, setLoginError] = useState<string | null>(null);
@@ -179,7 +179,7 @@ function App() {
             />
             <main className="flex-1 h-full w-full relative">
                 {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
-                <MapComponent userPosition={position} sectorGeoJSON={sectorGeoJSON} />
+                <MapComponent userPosition={position} positionHistory={positionHistory} sectorGeoJSON={sectorGeoJSON} />
             </main>
         </div>
     );
