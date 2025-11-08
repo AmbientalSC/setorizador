@@ -12,6 +12,22 @@ const MapSizeFixer: React.FC = () => {
         const timer = setTimeout(() => {
             map.invalidateSize();
         }, 100);
+
+        // Create custom panes for proper z-ordering: sector (below) and trail (above)
+        try {
+            if (!map.getPane('sectorPane')) {
+                map.createPane('sectorPane');
+                const p = map.getPane('sectorPane');
+                if (p) p.style.zIndex = '400';
+            }
+            if (!map.getPane('trailPane')) {
+                map.createPane('trailPane');
+                const p2 = map.getPane('trailPane');
+                if (p2) p2.style.zIndex = '650';
+            }
+        } catch (e) {
+            // ignore if panes already exist or not supported
+        }
         return () => clearTimeout(timer);
     }, [map]);
     return null;
@@ -73,6 +89,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
                     <GeoJSON
                         key={geoJsonKey}
                         data={sectorGeoJSON}
+                        pane="sectorPane"
                         ref={geoJsonRef}
                         style={() => ({
                             color: '#ff0000',
@@ -96,6 +113,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
             {/* Render GPS trail and direction arrows AFTER GeoJSON so they appear on top */}
             {positionHistory.length > 1 && (
                 <Polyline
+                    pane="trailPane"
                     positions={positionHistory.map(pos => [pos.lat, pos.lng])}
                     pathOptions={{
                         color: '#00ff00',
@@ -106,7 +124,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
             )}
 
             {userPosition && (
-                <Marker position={[userPosition.lat, userPosition.lng]} icon={userIcon}>
+                <Marker position={[userPosition.lat, userPosition.lng]} icon={userIcon} pane="trailPane">
                     <Popup>
                         Your current location.
                     </Popup>
@@ -142,7 +160,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
                         `</div>`;
                     const icon = L.divIcon({ html, className: 'trail-arrow-icon', iconSize: [20, 20], iconAnchor: [10, 10] });
                     arrows.push(
-                        <Marker key={`arrow-${i}`} position={[midLat, midLng]} icon={icon} interactive={false} zIndexOffset={1000} />
+                        <Marker key={`arrow-${i}`} position={[midLat, midLng]} icon={icon} interactive={false} zIndexOffset={1000} pane="trailPane" />
                     );
                 }
                 return arrows;
