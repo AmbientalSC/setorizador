@@ -3,7 +3,7 @@ import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity } from '
 import type { City, Sector } from '../types';
 
 interface InitialModalProps {
-    onSubmit: (operacao: string, cidade: string, setor: string) => void;
+    onSubmit: (operacao: string, cidade: string, setor: string, setorNome: string) => void;
 }
 
 // Searchable Select Component for Modal
@@ -185,7 +185,9 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit }) => {
 
     const handleSubmit = () => {
         if (operacao && cidade && setor) {
-            onSubmit(operacao, cidade, setor);
+            const selectedSector = sectors.find(s => s.id === setor);
+            const setorNome = selectedSector?.nome || setor;
+            onSubmit(operacao, cidade, setor, setorNome);
         }
     };
 

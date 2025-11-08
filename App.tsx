@@ -26,6 +26,7 @@ function App() {
     const [selectedCityId, setSelectedCityId] = useState<string>('');
     const [sectors, setSectors] = useState<Sector[]>([]);
     const [selectedSectorName, setSelectedSectorName] = useState<string>('');
+    const [selectedSectorDisplayName, setSelectedSectorDisplayName] = useState<string>('');
     const [sectorGeoJSON, setSectorGeoJSON] = useState<GeoJSONFeatureCollection | null>(null);
     const [isLoading, setIsLoading] = useState({
         cities: true,
@@ -72,10 +73,11 @@ function App() {
         setLoginError(null); // Set to null to hide modal
     };
 
-    const handleInitialSubmit = async (operacao: string, cidade: string, setor: string) => {
+    const handleInitialSubmit = async (operacao: string, cidade: string, setor: string, setorNome: string) => {
         setSelectedOperacao(operacao);
         setSelectedCityId(cidade.toLowerCase().replace(/\s+/g, '_'));
         setSelectedSectorName(setor);
+        setSelectedSectorDisplayName(setorNome);
         setShowInitialModal(false);
 
         // Os useEffect já vão carregar os dados automaticamente
@@ -107,6 +109,7 @@ function App() {
         if (!selectedOperacao || !selectedCityId) {
             setSectors([]);
             setSelectedSectorName('');
+            setSelectedSectorDisplayName('');
             setSectorGeoJSON(null);
             return;
         }
@@ -115,6 +118,7 @@ function App() {
             setIsLoading(prev => ({ ...prev, sectors: true }));
             setSectorGeoJSON(null);
             setSelectedSectorName('');
+            setSelectedSectorDisplayName('');
             try {
                 const sectorList = await getSectorsByOperacaoAndCity(selectedOperacao, selectedCityId);
                 setSectors(sectorList);
@@ -155,6 +159,7 @@ function App() {
         setDataVersion(prev => prev + 1);
         setSelectedCityId('');
         setSelectedSectorName('');
+        setSelectedSectorDisplayName('');
         setSectors([]);
         setSectorGeoJSON(null);
     };
@@ -202,6 +207,7 @@ function App() {
                 onCityChange={setSelectedCityId}
                 sectors={sectors}
                 selectedSectorName={selectedSectorName}
+                selectedSectorDisplayName={selectedSectorDisplayName}
                 onSectorChange={setSelectedSectorName}
                 onDataUploaded={handleDataUploaded}
                 isLoading={isLoading}

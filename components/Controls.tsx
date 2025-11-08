@@ -10,6 +10,7 @@ interface ControlsProps {
     onCityChange: (cityId: string) => void;
     sectors: Sector[];
     selectedSectorName: string;
+    selectedSectorDisplayName: string;
     onSectorChange: (sectorName: string) => void;
     onDataUploaded: () => void;
     isLoading: {
@@ -233,6 +234,7 @@ export const Controls: React.FC<ControlsProps> = ({
     onCityChange,
     sectors,
     selectedSectorName,
+    selectedSectorDisplayName,
     onSectorChange,
     onDataUploaded,
     isLoading,
@@ -269,7 +271,7 @@ export const Controls: React.FC<ControlsProps> = ({
                         <div className="bg-gray-800 rounded px-2 py-1.5 border border-gray-700">
                             <div className="text-gray-400 text-[10px] uppercase tracking-wide mb-0.5">Setor</div>
                             <div className="text-white font-medium truncate">
-                                {selectedSectorName || '—'}
+                                {selectedSectorDisplayName || sectors.find(s => s.id === selectedSectorName)?.nome || selectedSectorName || '—'}
                             </div>
                         </div>
                     </div>
