@@ -50,9 +50,7 @@ const SearchableSelect = ({
     const displayText = displayValue || selectedOption?.nome || placeholder;
     const filteredOptions = options.filter(opt =>
         opt.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    useEffect(() => {
+    ); useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);

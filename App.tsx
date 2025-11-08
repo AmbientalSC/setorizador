@@ -81,9 +81,7 @@ function App() {
         setShowInitialModal(false);
 
         // Os useEffect já vão carregar os dados automaticamente
-    };
-
-    const fetchCities = useCallback(async () => {
+    }; const fetchCities = useCallback(async () => {
         if (!selectedOperacao) {
             setCities([]);
             return;
@@ -116,9 +114,6 @@ function App() {
 
         const fetchSectors = async () => {
             setIsLoading(prev => ({ ...prev, sectors: true }));
-            setSectorGeoJSON(null);
-            setSelectedSectorName('');
-            setSelectedSectorDisplayName('');
             try {
                 const sectorList = await getSectorsByOperacaoAndCity(selectedOperacao, selectedCityId);
                 setSectors(sectorList);
