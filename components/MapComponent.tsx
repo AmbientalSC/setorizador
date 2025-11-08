@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import type { Map } from 'leaflet';
 import L from 'leaflet';
 import type { GeoJSONFeatureCollection } from '../types';
@@ -57,6 +57,10 @@ interface MapComponentProps {
     userPosition: { lat: number; lng: number } | null;
     positionHistory: { lat: number; lng: number }[];
     sectorGeoJSON: GeoJSONFeatureCollection | null;
+    // optional debug support: click handler and debug trail points
+    onMapClick?: (lat: number, lng: number) => void;
+    debugTrail?: { lat: number; lng: number }[];
+    debugMode?: boolean;
 }
 
 const userIcon = new L.Icon({
@@ -69,12 +73,69 @@ const userIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positionHistory, sectorGeoJSON }) => {
+export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positionHistory, sectorGeoJSON, onMapClick, debugTrail = [], debugMode = false }) => {
     const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
     // Using key on GeoJSON component to force re-render when data changes.
     // This is a standard React pattern to handle components that don't internally react to prop changes.
     const geoJsonKey = sectorGeoJSON ? JSON.stringify(sectorGeoJSON.features[0]?.properties) : 'no-data';
+
+    // Helper: component that listens to map clicks and forwards them via onMapClick
+    const MapClickHandler: React.FC = () => {
+        useMapEvents({
+            click(e) {
+                if (onMapClick && debugMode) {
+                    const { lat, lng } = e.latlng;
+                    onMapClick(lat, lng);
+                }
+            }
+        });
+        return null;
+    };
+
+    // Create arrow markers for a given position list (returns array of Marker nodes)
+    const createArrowsFor = (positions: { lat: number; lng: number }[], prefix = 'a') => {
+        if (!positions || positions.length < 2) return null;
+        const toRad = (d: number) => d * Math.PI / 180;
+        const toDeg = (r: number) => r * 180 / Math.PI;
+        const bearing = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+            const lat1 = toRad(a.lat);
+            const lat2 = toRad(b.lat);
+            const dLon = toRad(b.lng - a.lng);
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            let brng = Math.atan2(y, x);
+            brng = toDeg(brng);
+            return (brng + 360) % 360;
+        };
+
+        const arrows: React.ReactNode[] = [];
+            for (let i = 0; i < positions.length - 1; i++) {
+            const p1 = positions[i];
+            const p2 = positions[i + 1];
+            const midLat = (p1.lat + p2.lat) / 2;
+            const midLng = (p1.lng + p2.lng) / 2;
+                    const angle = bearing(p1, p2);
+                    // Arrow SVG defaults pointing to the right (east). The bearing function
+                    // returns degrees clockwise from north, so convert to CSS rotation (0 = east)
+                    // by subtracting 90 degrees.
+                    const rotated = angle - 90;
+                    const size = 28; // larger arrow for better visibility
+                    const strokeWidth = 3;
+                    const svg = encodeURIComponent(`\n                        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='${size}' height='${size}'>\n                          <path d='M2 12 L16 12 M12 8 L16 12 L12 16' stroke='#00ff00' stroke-width='${strokeWidth}' fill='none' stroke-linecap='round' stroke-linejoin='round' />\n                        </svg>\n                    `);
+                    const html = `<div style="transform: rotate(${rotated}deg); transform-origin: center center; width:${size}px; height:${size}px; display:flex; align-items:center; justify-content:center;">` +
+                `<img src="data:image/svg+xml;utf8,${svg}" style="width:${size}px; height:${size}px; display:block;"/>` +
+                `</div>`;
+            const icon = L.divIcon({ html, className: 'trail-arrow-icon', iconSize: [size, size], iconAnchor: [Math.round(size/2), Math.round(size/2)] });
+            arrows.push(
+                <Marker key={`${prefix}-arrow-${i}`} position={[midLat, midLng]} icon={icon} interactive={false} zIndexOffset={1000} pane="trailPane" />
+            );
+        }
+        return arrows;
+    };
+
+    const historyArrows = useMemo(() => createArrowsFor(positionHistory, 'hist'), [positionHistory]);
+    const debugArrows = useMemo(() => createArrowsFor(debugTrail, 'dbg'), [debugTrail]);
 
     return (
         <MapContainer center={[-14.235, -51.925]} zoom={4} scrollWheelZoom={true} className="h-full w-full z-0" zoomControl={false}>
@@ -83,6 +144,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            {/* Render map click handler only when debug mode is active */}
+            {onMapClick && debugMode && <MapClickHandler />}
             {/* sector GeoJSON will render below */}
             {sectorGeoJSON && (
                 <>
@@ -123,6 +186,20 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
                 />
             )}
 
+            {/* Debug trail (created by clicking on the map) */}
+            {debugTrail && debugTrail.length > 1 && (
+                <Polyline
+                    pane="trailPane"
+                    positions={debugTrail.map(pos => [pos.lat, pos.lng])}
+                    pathOptions={{
+                        color: '#00ff00',
+                        weight: 4,
+                        opacity: 0.9,
+                        dashArray: '6 4'
+                    }}
+                />
+            )}
+
             {userPosition && (
                 <Marker position={[userPosition.lat, userPosition.lng]} icon={userIcon} pane="trailPane">
                     <Popup>
@@ -132,39 +209,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({ userPosition, positi
             )}
 
             {/* Direction arrows along the trail: create small rotated SVG icons at midpoints */}
-            {useMemo(() => {
-                if (positionHistory.length < 2) return null;
-                const arrows: React.ReactNode[] = [];
-                const toRad = (d: number) => d * Math.PI / 180;
-                const toDeg = (r: number) => r * 180 / Math.PI;
-                const bearing = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-                    const lat1 = toRad(a.lat);
-                    const lat2 = toRad(b.lat);
-                    const dLon = toRad(b.lng - a.lng);
-                    const y = Math.sin(dLon) * Math.cos(lat2);
-                    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-                    let brng = Math.atan2(y, x);
-                    brng = toDeg(brng);
-                    return (brng + 360) % 360;
-                };
-
-                for (let i = 0; i < positionHistory.length - 1; i++) {
-                    const p1 = positionHistory[i];
-                    const p2 = positionHistory[i + 1];
-                    const midLat = (p1.lat + p2.lat) / 2;
-                    const midLng = (p1.lng + p2.lng) / 2;
-                    const angle = bearing(p1, p2);
-                    const svg = encodeURIComponent(`\n                        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'>\n                          <path d='M2 12 L16 12 M12 8 L16 12 L12 16' stroke='#00ff00' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round' />\n                        </svg>\n                    `);
-                    const html = `<div style="transform: rotate(${angle}deg); width:20px; height:20px; display:flex; align-items:center; justify-content:center;">` +
-                        `<img src="data:image/svg+xml;utf8,${svg}" style="width:20px; height:20px; display:block;"/>` +
-                        `</div>`;
-                    const icon = L.divIcon({ html, className: 'trail-arrow-icon', iconSize: [20, 20], iconAnchor: [10, 10] });
-                    arrows.push(
-                        <Marker key={`arrow-${i}`} position={[midLat, midLng]} icon={icon} interactive={false} zIndexOffset={1000} pane="trailPane" />
-                    );
-                }
-                return arrows;
-            }, [positionHistory])}
+            {/* Arrows for real position history and debug trail */}
+            {historyArrows}
+            {debugArrows}
         </MapContainer>
     );
 };

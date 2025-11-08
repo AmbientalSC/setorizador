@@ -34,7 +34,8 @@ function App() {
         geojson: false,
     });
     const [dataVersion, setDataVersion] = useState(0);
-    const [activeTab, setActiveTab] = useState<'mapa' | 'gerenciamento'>('mapa');
+    const [activeTab, setActiveTab] = useState<'mapa' | 'gerenciamento' | 'debug'>('mapa');
+    const [debugTrail, setDebugTrail] = useState<{ lat: number; lng: number }[]>([]);
 
     // Check authentication state
     useEffect(() => {
@@ -222,6 +223,14 @@ function App() {
                             Gerenciamento
                         </button>
                         <button
+                            onClick={() => setActiveTab('debug')}
+                            className={`flex-1 p-4 text-center font-medium transition-colors ${
+                                activeTab === 'debug' ? 'bg-gray-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                        >
+                            DEBUG
+                        </button>
+                        <button
                             onClick={handleLogout}
                             className="p-4 bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
                         >
@@ -263,8 +272,50 @@ function App() {
                                     </button>
                                 </main>
                             </div>
-                        ) : (
+                        ) : activeTab === 'gerenciamento' ? (
                             <AdminManagement onDataUploaded={handleDataUploaded} />
+                        ) : (
+                            // DEBUG tab: allow clicking on the map to create a test trail
+                            <div className="flex flex-col md:flex-row h-full">
+                                <aside className="w-full md:w-72 bg-gray-700 p-4 space-y-4">
+                                    <h2 className="text-lg font-semibold">DEBUG - Criar Rastro</h2>
+                                    <p className="text-sm text-gray-300">Clique no mapa para adicionar pontos ao rastro de teste. Use Limpar ou Desfazer para ajustar.</p>
+                                    <div className="space-x-2">
+                                        <button
+                                            onClick={() => setDebugTrail([])}
+                                            className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                                        >
+                                            Limpar
+                                        </button>
+                                        <button
+                                            onClick={() => setDebugTrail(prev => prev.slice(0, -1))}
+                                            className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-sm"
+                                        >
+                                            Desfazer
+                                        </button>
+                                    </div>
+                                    <div className="text-sm text-gray-200 mt-2">
+                                        Pontos: {debugTrail.length}
+                                    </div>
+                                    <div className="max-h-64 overflow-auto text-xs font-mono bg-gray-800 p-2 rounded">
+                                        {debugTrail.map((p, i) => (
+                                            <div key={i}>[{i}] {p.lat.toFixed(6)}, {p.lng.toFixed(6)}</div>
+                                        ))}
+                                    </div>
+                                    <div className="text-xs text-gray-400 mt-2">Quando terminar, você pode copiar os pontos e testar o comportamento dos rastros.</div>
+                                </aside>
+                                <main className="flex-1 h-full w-full relative pt-[120px] md:pt-0">
+                                    {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
+                                    <MapComponent
+                                        userPosition={position}
+                                        positionHistory={positionHistory}
+                                        sectorGeoJSON={sectorGeoJSON}
+                                        onMapClick={(lat, lng) => setDebugTrail(prev => [...prev, { lat, lng }])}
+                                        debugTrail={debugTrail}
+                                        debugMode={true}
+                                    />
+                                </main>
+                            </div>
                         )}
                     </div>
                 </div>
