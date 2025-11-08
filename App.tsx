@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Controls } from './components/Controls';
 import { MapComponent } from './components/MapComponent';
 import { Login } from './components/Login';
 import { InitialModal } from './components/InitialModal';
+import { AdminManagement } from './components/AdminManagement';
 import { useGeolocation } from './hooks/useGeolocation';
 import {
     getCitiesByOperacao,
@@ -34,6 +34,7 @@ function App() {
         geojson: false,
     });
     const [dataVersion, setDataVersion] = useState(0);
+    const [activeTab, setActiveTab] = useState<'mapa' | 'gerenciamento'>('mapa');
 
     // Check authentication state
     useEffect(() => {
@@ -51,7 +52,10 @@ function App() {
             await login(email, password);
             setLoginError(null); // Close modal on success
         } catch (error: any) {
-            setLoginError(error.message || 'Failed to sign in');
+            // If Firebase error, it usually has `code` and `message` fields.
+            const code = error?.code;
+            const message = error?.message || 'Failed to sign in';
+            setLoginError(code ? `${code}: ${message}` : message);
         } finally {
             setLoginLoading(false);
         }
@@ -169,9 +173,9 @@ function App() {
     }
 
     return (
-        <div className="flex flex-col md:flex-row h-screen bg-gray-800 text-white font-sans">
+        <div className="flex flex-col h-screen bg-gray-800 text-white font-sans">
             {/* Initial Modal */}
-            {showInitialModal && (
+            {showInitialModal && !user && (
                 <InitialModal onSubmit={handleInitialSubmit} />
             )}
 
@@ -196,35 +200,108 @@ function App() {
                 </button>
             )}
 
-            <Controls
-                cities={cities}
-                selectedCityId={selectedCityId}
-                onCityChange={setSelectedCityId}
-                sectors={sectors}
-                selectedSectorName={selectedSectorName}
-                selectedSectorDisplayName={selectedSectorDisplayName}
-                onSectorChange={setSelectedSectorName}
-                onDataUploaded={handleDataUploaded}
-                isLoading={isLoading}
-                user={user}
-                onLogout={handleLogout}
-            />
-            <main className="flex-1 h-full w-full relative pt-[120px] md:pt-0">
-                {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
-                <MapComponent userPosition={position} positionHistory={positionHistory} sectorGeoJSON={sectorGeoJSON} />
+            {user ? (
+                // Interface do Administrador com Abas
+                <div className="flex flex-col h-full">
+                    {/* Abas */}
+                    <div className="flex bg-gray-700">
+                        <button
+                            onClick={() => setActiveTab('mapa')}
+                            className={`flex-1 p-4 text-center font-medium transition-colors ${
+                                activeTab === 'mapa' ? 'bg-gray-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                        >
+                            Mapa
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('gerenciamento')}
+                            className={`flex-1 p-4 text-center font-medium transition-colors ${
+                                activeTab === 'gerenciamento' ? 'bg-gray-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                        >
+                            Gerenciamento
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="p-4 bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
+                        >
+                            Logout
+                        </button>
+                    </div>
 
-                {/* Botão Trocar Setor - Canto Inferior Direito */}
-                <button
-                    onClick={() => setShowInitialModal(true)}
-                    className="fixed bottom-4 right-4 z-[900] p-4 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg text-white transition-colors"
-                    aria-label="Trocar Setor"
-                    title="Trocar Setor"
-                >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                </button>
-            </main>
+                    {/* Conteúdo das Abas */}
+                    <div className="flex-1">
+                        {activeTab === 'mapa' ? (
+                            <div className="flex flex-col md:flex-row h-full">
+                                <Controls
+                                    cities={cities}
+                                    selectedCityId={selectedCityId}
+                                    onCityChange={setSelectedCityId}
+                                    sectors={sectors}
+                                    selectedSectorName={selectedSectorName}
+                                    selectedSectorDisplayName={selectedSectorDisplayName}
+                                    onSectorChange={setSelectedSectorName}
+                                    onDataUploaded={handleDataUploaded}
+                                    isLoading={isLoading}
+                                    user={user}
+                                    onLogout={handleLogout}
+                                />
+                                <main className="flex-1 h-full w-full relative pt-[120px] md:pt-0">
+                                    {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
+                                    <MapComponent userPosition={position} positionHistory={positionHistory} sectorGeoJSON={sectorGeoJSON} />
+
+                                    {/* Botão Trocar Setor - Canto Inferior Direito */}
+                                    <button
+                                        onClick={() => setShowInitialModal(true)}
+                                        className="fixed bottom-4 right-4 z-[900] p-4 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg text-white transition-colors"
+                                        aria-label="Trocar Setor"
+                                        title="Trocar Setor"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                        </svg>
+                                    </button>
+                                </main>
+                            </div>
+                        ) : (
+                            <AdminManagement onDataUploaded={handleDataUploaded} />
+                        )}
+                    </div>
+                </div>
+            ) : (
+                // Interface do Usuário Não Logado
+                <div className="flex flex-col md:flex-row h-full">
+                    <Controls
+                        cities={cities}
+                        selectedCityId={selectedCityId}
+                        onCityChange={setSelectedCityId}
+                        sectors={sectors}
+                        selectedSectorName={selectedSectorName}
+                        selectedSectorDisplayName={selectedSectorDisplayName}
+                        onSectorChange={setSelectedSectorName}
+                        onDataUploaded={handleDataUploaded}
+                        isLoading={isLoading}
+                        user={user}
+                        onLogout={handleLogout}
+                    />
+                    <main className="flex-1 h-full w-full relative pt-[120px] md:pt-0">
+                        {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
+                        <MapComponent userPosition={position} positionHistory={positionHistory} sectorGeoJSON={sectorGeoJSON} />
+
+                        {/* Botão Trocar Setor - Canto Inferior Direito */}
+                        <button
+                            onClick={() => setShowInitialModal(true)}
+                            className="fixed bottom-4 right-4 z-[900] p-4 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg text-white transition-colors"
+                            aria-label="Trocar Setor"
+                            title="Trocar Setor"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                        </button>
+                    </main>
+                </div>
+            )}
         </div>
     );
 }

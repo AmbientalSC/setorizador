@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import type { City, Sector } from '../types';
-import { AdminUploader } from './AdminUploader';
 import type { User } from 'firebase/auth';
 
 interface ControlsProps {
@@ -242,8 +241,6 @@ export const Controls: React.FC<ControlsProps> = ({
     user,
     onLogout
 }) => {
-    const [isCollapsed, setIsCollapsed] = useState(false);
-
     return (
         <>
             {/* Mobile Top Bar - Display Only */}
@@ -284,22 +281,8 @@ export const Controls: React.FC<ControlsProps> = ({
                         </div>
                     )}
 
-                    {user && (
-                        <button
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="w-full mt-2 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white font-medium"
-                        >
-                            {isCollapsed ? 'Mostrar Painel Admin' : 'Ocultar Painel Admin'}
-                        </button>
-                    )}
+                    {/* Admin panel moved to separate tab */}
                 </div>
-
-                {/* Mobile Admin Panel - Collapsible */}
-                {user && !isCollapsed && (
-                    <div className="border-t border-gray-700 p-3 bg-gray-800">
-                        <AdminUploader onDataUploaded={onDataUploaded} />
-                    </div>
-                )}
             </div>
 
             {/* Desktop Sidebar */}
@@ -350,7 +333,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
                 {user && (
                     <div className="border-t border-gray-700 pt-6">
-                        <AdminUploader onDataUploaded={onDataUploaded} />
+                        {/* Admin panel moved to separate tab */}
                     </div>
                 )}
             </aside>

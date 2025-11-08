@@ -59,6 +59,14 @@ export const getSectorGeoJSONByOperacao = async (operacao: string, cityId: strin
     return JSON.parse(data.geoJSON);
 };
 
+export const updateSectorGeoJSONByOperacao = async (operacao: string, cityId: string, sectorName: string, geoJSON: GeoJSONFeatureCollection): Promise<void> => {
+    const sectorRef = doc(db, 'operacoes', operacao, 'cidades', cityId, 'setores', sectorName);
+    await setDoc(sectorRef, {
+        nome: sectorName,
+        geoJSON: JSON.stringify(geoJSON),
+    }, { merge: true });
+};
+
 // Legacy functions (keep for compatibility)
 export const getCities = async (): Promise<City[]> => {
     await delay(300);
@@ -91,6 +99,14 @@ export const getSectorGeoJSON = async (cityId: string, sectorName: string): Prom
     }
     const data = sectorDoc.data() as { geoJSON: string };
     return JSON.parse(data.geoJSON);
+};
+
+export const updateSectorGeoJSON = async (cityId: string, sectorName: string, geoJSON: GeoJSONFeatureCollection): Promise<void> => {
+    const sectorRef = doc(db, 'cidades', cityId, 'setores', sectorName);
+    await setDoc(sectorRef, {
+        nome: sectorName,
+        geoJSON: JSON.stringify(geoJSON),
+    }, { merge: true });
 };
 
 // --- ETL PROCESSING LOGIC ---
