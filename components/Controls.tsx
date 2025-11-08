@@ -243,8 +243,6 @@ export const Controls: React.FC<ControlsProps> = ({
 }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
 
-    console.log('Controls render:', { selectedSectorName, selectedSectorDisplayName, sectors });
-
     return (
         <>
             {/* Mobile Top Bar - Display Only */}

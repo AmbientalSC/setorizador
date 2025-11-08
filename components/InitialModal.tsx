@@ -187,7 +187,6 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit }) => {
         if (operacao && cidade && setor) {
             const selectedSector = sectors.find(s => s.id === setor);
             const setorNome = selectedSector?.nome || setor;
-            console.log('InitialModal handleSubmit:', { operacao, cidade, setor, setorNome, selectedSector, sectors });
             onSubmit(operacao, cidade, setor, setorNome);
         }
     };
