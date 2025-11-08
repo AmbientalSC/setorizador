@@ -74,10 +74,12 @@ function App() {
     };
 
     const handleInitialSubmit = async (operacao: string, cidade: string, setor: string, setorNome: string) => {
+        console.log('handleInitialSubmit:', { operacao, cidade, setor, setorNome });
         setSelectedOperacao(operacao);
         setSelectedCityId(cidade.toLowerCase().replace(/\s+/g, '_'));
         setSelectedSectorName(setor);
         setSelectedSectorDisplayName(setorNome);
+        console.log('setSelectedSectorDisplayName:', setorNome);
         setShowInitialModal(false);
 
         // Os useEffect já vão carregar os dados automaticamente
