@@ -30,7 +30,8 @@ const SearchableSelect = ({
     options,
     disabled,
     loading,
-    placeholder
+    placeholder,
+    displayValue
 }: {
     label: string;
     value: string;
@@ -39,12 +40,14 @@ const SearchableSelect = ({
     disabled: boolean;
     loading: boolean;
     placeholder: string;
+    displayValue?: string;
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     const selectedOption = options.find(opt => opt.id === value);
+    const displayText = displayValue || selectedOption?.nome || placeholder;
     const filteredOptions = options.filter(opt =>
         opt.nome.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -71,7 +74,7 @@ const SearchableSelect = ({
                     className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-left focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white"
                 >
                     <span className="block truncate">
-                        {loading ? 'Carregando...' : (selectedOption?.nome || placeholder)}
+                        {loading ? 'Carregando...' : displayText}
                     </span>
                     <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                         <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,6 +339,7 @@ export const Controls: React.FC<ControlsProps> = ({
                         disabled={!selectedCityId || isLoading.sectors}
                         loading={isLoading.sectors}
                         placeholder="-- Selecione um Setor --"
+                        displayValue={selectedSectorDisplayName}
                     />
                 </div>
 
