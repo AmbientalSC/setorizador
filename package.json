@@ -9,7 +9,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "upload": "node uploadGeoJSON.js",
+    "upload-operacoes": "node uploadGeoJSONByOperacao.js"
   },
   "dependencies": {
     "firebase": "^12.5.0",

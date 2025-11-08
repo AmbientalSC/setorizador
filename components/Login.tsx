@@ -22,7 +22,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading, onClose
                 <div className="flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-bold text-white">
-                            Admin Login
+                            Login
                         </h2>
                         <p className="mt-1 text-sm text-gray-400">
                             Sign in to manage sectors

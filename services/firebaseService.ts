@@ -22,6 +22,44 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 // --- FIRESTORE API ---
 
+export const getOperacoes = async (): Promise<string[]> => {
+    return ['domiciliar', 'seletiva', 'volumosos'];
+};
+
+export const getCitiesByOperacao = async (operacao: string): Promise<City[]> => {
+    await delay(300);
+    const citiesRef = collection(db, 'operacoes', operacao, 'cidades');
+    const snapshot = await getDocs(citiesRef);
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        nome: (doc.data() as { nome: string }).nome,
+    }));
+};
+
+export const getSectorsByOperacaoAndCity = async (operacao: string, cityId: string): Promise<Sector[]> => {
+    await delay(200);
+    const cityDoc = await getDoc(doc(db, 'operacoes', operacao, 'cidades', cityId));
+    if (!cityDoc.exists()) {
+        throw new Error("City not found");
+    }
+    const setoresDisponiveis = (cityDoc.data() as { setoresDisponiveis: string[] }).setoresDisponiveis || [];
+    return setoresDisponiveis.map((sectorName: string) => ({
+        id: sectorName,
+        nome: sectorName,
+    }));
+};
+
+export const getSectorGeoJSONByOperacao = async (operacao: string, cityId: string, sectorName: string): Promise<GeoJSONFeatureCollection | null> => {
+    await delay(500);
+    const sectorDoc = await getDoc(doc(db, 'operacoes', operacao, 'cidades', cityId, 'setores', sectorName));
+    if (!sectorDoc.exists()) {
+        return null;
+    }
+    const data = sectorDoc.data() as { geoJSON: string };
+    return JSON.parse(data.geoJSON);
+};
+
+// Legacy functions (keep for compatibility)
 export const getCities = async (): Promise<City[]> => {
     await delay(300);
     const citiesRef = collection(db, 'cidades');

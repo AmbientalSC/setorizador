@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { City, Sector } from '../types';
 import { AdminUploader } from './AdminUploader';
 import type { User } from 'firebase/auth';
@@ -20,6 +20,190 @@ interface ControlsProps {
     user: User | null;
     onLogout: () => void;
 }
+
+// Searchable Select Component
+const SearchableSelect = ({
+    label,
+    value,
+    onChange,
+    options,
+    disabled,
+    loading,
+    placeholder
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    options: { id: string; nome: string }[];
+    disabled: boolean;
+    loading: boolean;
+    placeholder: string;
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    const selectedOption = options.find(opt => opt.id === value);
+    const filteredOptions = options.filter(opt =>
+        opt.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setSearchTerm('');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div className="w-full" ref={wrapperRef}>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => !disabled && setIsOpen(!isOpen)}
+                    disabled={disabled || loading}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-left focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                >
+                    <span className="block truncate">
+                        {loading ? 'Carregando...' : (selectedOption?.nome || placeholder)}
+                    </span>
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </span>
+                </button>
+
+                {isOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-hidden">
+                        <div className="p-2 border-b border-gray-600">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar..."
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                autoFocus
+                            />
+                        </div>
+                        <ul className="max-h-48 overflow-y-auto">
+                            {filteredOptions.length === 0 ? (
+                                <li className="px-3 py-2 text-sm text-gray-400">Nenhum resultado encontrado</li>
+                            ) : (
+                                filteredOptions.map((option) => (
+                                    <li
+                                        key={option.id}
+                                        onClick={() => {
+                                            onChange(option.id);
+                                            setIsOpen(false);
+                                            setSearchTerm('');
+                                        }}
+                                        className={`cursor-pointer px-3 py-2 text-sm hover:bg-gray-700 ${option.id === value ? 'bg-blue-600 text-white' : 'text-gray-200'
+                                            }`}
+                                    >
+                                        {option.nome}
+                                    </li>
+                                ))
+                            )}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// Compact Searchable Select for Mobile
+const CompactSearchableSelect = ({
+    value,
+    onChange,
+    options,
+    disabled,
+    loading,
+    placeholder
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    options: { id: string; nome: string }[];
+    disabled: boolean;
+    loading: boolean;
+    placeholder: string;
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    const selectedOption = options.find(opt => opt.id === value);
+    const filteredOptions = options.filter(opt =>
+        opt.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setSearchTerm('');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <button
+                type="button"
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                disabled={disabled || loading}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white text-left focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            >
+                <span className="block truncate text-xs">
+                    {loading ? 'Carregando...' : (selectedOption?.nome || placeholder)}
+                </span>
+            </button>
+
+            {isOpen && (
+                <div className="absolute z-[800] mt-1 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-64 overflow-hidden">
+                    <div className="p-2 border-b border-gray-600">
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar..."
+                            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                        />
+                    </div>
+                    <ul className="max-h-52 overflow-y-auto">
+                        {filteredOptions.length === 0 ? (
+                            <li className="px-2 py-2 text-xs text-gray-400">Nenhum resultado</li>
+                        ) : (
+                            filteredOptions.map((option) => (
+                                <li
+                                    key={option.id}
+                                    onClick={() => {
+                                        onChange(option.id);
+                                        setIsOpen(false);
+                                        setSearchTerm('');
+                                    }}
+                                    className={`cursor-pointer px-2 py-2 text-xs hover:bg-gray-700 ${option.id === value ? 'bg-blue-600 text-white' : 'text-gray-200'
+                                        }`}
+                                >
+                                    {option.nome}
+                                </li>
+                            ))
+                        )}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Selector = ({ label, value, onChange, options, disabled, loading, defaultOptionText }: { label: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: { id: string, nome: string }[], disabled: boolean, loading: boolean, defaultOptionText: string }) => (
     <div className="w-full">
@@ -59,11 +243,11 @@ export const Controls: React.FC<ControlsProps> = ({
 
     return (
         <>
-            {/* Mobile Top Bar with Selectors */}
+            {/* Mobile Top Bar - Display Only */}
             <div className="md:hidden fixed top-0 left-0 right-0 z-[700] bg-gray-900 border-b border-gray-700 shadow-lg">
-                <div className="p-3 space-y-2">
-                    <div className="flex items-center justify-between mb-2">
-                        <h1 className="text-lg font-bold text-white">GeoVisualizer</h1>
+                <div className="p-3">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-lg font-bold text-white">AmbSetores</h1>
                         {user && (
                             <button
                                 onClick={onLogout}
@@ -73,53 +257,40 @@ export const Controls: React.FC<ControlsProps> = ({
                             </button>
                         )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <select
-                                value={selectedCityId}
-                                onChange={(e) => onCityChange(e.target.value)}
-                                disabled={isLoading.cities}
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            >
-                                <option value="">{isLoading.cities ? 'Loading...' : 'City'}</option>
-                                {cities.map((city) => (
-                                    <option key={city.id} value={city.id}>
-                                        {city.nome}
-                                    </option>
-                                ))}
-                            </select>
+
+                    {/* Display selected city and sector as labels */}
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-gray-800 rounded px-2 py-1.5 border border-gray-700">
+                            <div className="text-gray-400 text-[10px] uppercase tracking-wide mb-0.5">Cidade</div>
+                            <div className="text-white font-medium truncate">
+                                {cities.find(c => c.id === selectedCityId)?.nome || '—'}
+                            </div>
                         </div>
-                        <div>
-                            <select
-                                value={selectedSectorName}
-                                onChange={(e) => onSectorChange(e.target.value)}
-                                disabled={!selectedCityId || isLoading.sectors}
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                            >
-                                <option value="">{isLoading.sectors ? 'Loading...' : 'Sector'}</option>
-                                {sectors.map((sector) => (
-                                    <option key={sector.id} value={sector.id}>
-                                        {sector.nome}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="bg-gray-800 rounded px-2 py-1.5 border border-gray-700">
+                            <div className="text-gray-400 text-[10px] uppercase tracking-wide mb-0.5">Setor</div>
+                            <div className="text-white font-medium truncate">
+                                {selectedSectorName || '—'}
+                            </div>
                         </div>
                     </div>
+
                     {isLoading.geojson && (
-                        <div className="flex items-center justify-center space-x-2 text-blue-300 text-xs py-1">
+                        <div className="flex items-center justify-center space-x-2 text-blue-300 text-xs py-2 mt-2">
                             <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            <span>Loading...</span>
+                            <span>Carregando...</span>
                         </div>
                     )}
+
                     {user && (
                         <button
                             onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white font-medium"
+                            className="w-full mt-2 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white font-medium"
                         >
-                            {isCollapsed ? 'Show Admin Panel' : 'Hide Admin Panel'}
+                            {isCollapsed ? 'Mostrar Painel Admin' : 'Ocultar Painel Admin'}
                         </button>
                     )}
                 </div>
+
                 {/* Mobile Admin Panel - Collapsible */}
                 {user && !isCollapsed && (
                     <div className="border-t border-gray-700 p-3 bg-gray-800">
@@ -133,7 +304,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 <header className="flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-white">GeoVisualizer</h1>
-                        <p className="text-sm text-gray-400">Select city and sector to display on map.</p>
+                        <p className="text-sm text-gray-400">Selecione a cidade e o setor para exibir no mapa.</p>
                     </div>
                     {user && (
                         <button
@@ -146,30 +317,30 @@ export const Controls: React.FC<ControlsProps> = ({
                 </header>
 
                 <div className="space-y-4">
-                    <Selector
-                        label="City"
+                    <SearchableSelect
+                        label="Cidade"
                         value={selectedCityId}
-                        onChange={(e) => onCityChange(e.target.value)}
+                        onChange={onCityChange}
                         options={cities}
                         disabled={isLoading.cities}
                         loading={isLoading.cities}
-                        defaultOptionText="-- Select a City --"
+                        placeholder="-- Selecione uma Cidade --"
                     />
-                    <Selector
-                        label="Sector"
+                    <SearchableSelect
+                        label="Setor"
                         value={selectedSectorName}
-                        onChange={(e) => onSectorChange(e.target.value)}
+                        onChange={onSectorChange}
                         options={sectors}
                         disabled={!selectedCityId || isLoading.sectors}
                         loading={isLoading.sectors}
-                        defaultOptionText="-- Select a Sector --"
+                        placeholder="-- Selecione um Setor --"
                     />
                 </div>
 
                 {isLoading.geojson && (
                     <div className="flex items-center space-x-2 text-blue-300">
                         <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span>Loading Sector Geometry...</span>
+                        <span>Carregando Geometria do Setor...</span>
                     </div>
                 )}
 

@@ -3,8 +3,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Controls } from './components/Controls';
 import { MapComponent } from './components/MapComponent';
 import { Login } from './components/Login';
+import { InitialModal } from './components/InitialModal';
 import { useGeolocation } from './hooks/useGeolocation';
-import { getCities, getSectors, getSectorGeoJSON } from './services/firebaseService';
+import {
+    getCitiesByOperacao,
+    getSectorsByOperacaoAndCity,
+    getSectorGeoJSONByOperacao
+} from './services/firebaseService';
 import { login, logout, onAuthChange } from './services/authService';
 import type { City, Sector, GeoJSONFeatureCollection } from './types';
 import type { User } from 'firebase/auth';
@@ -15,6 +20,8 @@ function App() {
     const [authLoading, setAuthLoading] = useState(true);
     const [loginError, setLoginError] = useState<string | null>(null);
     const [loginLoading, setLoginLoading] = useState(false);
+    const [showInitialModal, setShowInitialModal] = useState(true);
+    const [selectedOperacao, setSelectedOperacao] = useState<string>('');
     const [cities, setCities] = useState<City[]>([]);
     const [selectedCityId, setSelectedCityId] = useState<string>('');
     const [sectors, setSectors] = useState<Sector[]>([]);
@@ -65,24 +72,39 @@ function App() {
         setLoginError(null); // Set to null to hide modal
     };
 
+    const handleInitialSubmit = async (operacao: string, cidade: string, setor: string) => {
+        setSelectedOperacao(operacao);
+        setSelectedCityId(cidade.toLowerCase().replace(/\s+/g, '_'));
+        setSelectedSectorName(setor);
+        setShowInitialModal(false);
+
+        // Os useEffect já vão carregar os dados automaticamente
+    };
+
     const fetchCities = useCallback(async () => {
+        if (!selectedOperacao) {
+            setCities([]);
+            return;
+        }
+
         setIsLoading(prev => ({ ...prev, cities: true }));
         try {
-            const cityList = await getCities();
+            const cityList = await getCitiesByOperacao(selectedOperacao);
             setCities(cityList);
         } catch (error) {
             console.error("Failed to fetch cities:", error);
+            setCities([]);
         } finally {
             setIsLoading(prev => ({ ...prev, cities: false }));
         }
-    }, []);
+    }, [selectedOperacao]);
 
     useEffect(() => {
         fetchCities();
     }, [fetchCities, dataVersion]);
 
     useEffect(() => {
-        if (!selectedCityId) {
+        if (!selectedOperacao || !selectedCityId) {
             setSectors([]);
             setSelectedSectorName('');
             setSectorGeoJSON(null);
@@ -94,10 +116,10 @@ function App() {
             setSectorGeoJSON(null);
             setSelectedSectorName('');
             try {
-                const sectorList = await getSectors(selectedCityId);
+                const sectorList = await getSectorsByOperacaoAndCity(selectedOperacao, selectedCityId);
                 setSectors(sectorList);
             } catch (error) {
-                console.error(`Failed to fetch sectors for city ${selectedCityId}:`, error);
+                console.error(`Failed to fetch sectors:`, error);
                 setSectors([]);
             } finally {
                 setIsLoading(prev => ({ ...prev, sectors: false }));
@@ -105,10 +127,10 @@ function App() {
         };
 
         fetchSectors();
-    }, [selectedCityId]);
+    }, [selectedOperacao, selectedCityId]);
 
     useEffect(() => {
-        if (!selectedCityId || !selectedSectorName) {
+        if (!selectedOperacao || !selectedCityId || !selectedSectorName) {
             setSectorGeoJSON(null);
             return;
         }
@@ -116,7 +138,7 @@ function App() {
         const fetchGeoJSON = async () => {
             setIsLoading(prev => ({ ...prev, geojson: true }));
             try {
-                const geoJSONData = await getSectorGeoJSON(selectedCityId, selectedSectorName);
+                const geoJSONData = await getSectorGeoJSONByOperacao(selectedOperacao, selectedCityId, selectedSectorName);
                 setSectorGeoJSON(geoJSONData);
             } catch (error) {
                 console.error(`Failed to fetch GeoJSON for sector ${selectedSectorName}:`, error);
@@ -127,7 +149,7 @@ function App() {
         };
 
         fetchGeoJSON();
-    }, [selectedCityId, selectedSectorName]);
+    }, [selectedOperacao, selectedCityId, selectedSectorName]);
 
     const handleDataUploaded = () => {
         setDataVersion(prev => prev + 1);
@@ -148,6 +170,11 @@ function App() {
 
     return (
         <div className="flex flex-col md:flex-row h-screen bg-gray-800 text-white font-sans">
+            {/* Initial Modal */}
+            {showInitialModal && (
+                <InitialModal onSubmit={handleInitialSubmit} />
+            )}
+
             {/* Login Modal */}
             {!user && loginError !== null && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50">
@@ -155,13 +182,17 @@ function App() {
                 </div>
             )}
 
-            {/* Login Button - Top Right (Mobile: inside top bar area) */}
+            {/* Login Button - Top Right (Desktop only) */}
             {!user && (
                 <button
                     onClick={openLoginModal}
-                    className="fixed top-3 right-3 z-[800] px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-700 rounded-md shadow-lg text-white font-medium text-sm md:text-base"
+                    className="hidden md:block fixed top-3 right-3 z-[800] p-3 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg text-white"
+                    aria-label="Admin Login"
                 >
-                    Admin Login
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                 </button>
             )}
 
@@ -180,6 +211,18 @@ function App() {
             <main className="flex-1 h-full w-full relative pt-[120px] md:pt-0">
                 {geoError && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 p-2 rounded-md shadow-lg">{geoError}</div>}
                 <MapComponent userPosition={position} positionHistory={positionHistory} sectorGeoJSON={sectorGeoJSON} />
+
+                {/* Botão Trocar Setor - Canto Inferior Direito */}
+                <button
+                    onClick={() => setShowInitialModal(true)}
+                    className="fixed bottom-4 right-4 z-[900] p-4 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg text-white transition-colors"
+                    aria-label="Trocar Setor"
+                    title="Trocar Setor"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                </button>
             </main>
         </div>
     );
