@@ -50,7 +50,7 @@ function getCentroid(coordinates: any[]): { lat: number; lng: number } | null {
 }
 
 /**
- * Calcula a distância mínima entre uma posição e um GeoJSON (polígono)
+ * Calcula a distância mínima entre uma posição e um GeoJSON (polígono, linha, etc)
  */
 export function getDistanceToGeoJSON(
     position: Position,
@@ -58,17 +58,26 @@ export function getDistanceToGeoJSON(
 ): number {
     let minDistance = Infinity;
 
+    console.log(`   🧮 Calculando distância. Features:`, geoJSON.features?.length);
+
     for (const feature of geoJSON.features) {
-        if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
+        const geometryType = feature.geometry.type;
+        
+        if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') {
             const geometry = feature.geometry as any;
             let coordinates = geometry.coordinates;
 
+            console.log(`   📐 Tipo: ${geometryType}, Coords length:`, coordinates?.length);
+
             // Para MultiPolygon, pegar o primeiro polígono
-            if (feature.geometry.type === 'MultiPolygon') {
+            if (geometryType === 'MultiPolygon') {
                 coordinates = coordinates[0];
+                console.log(`   📐 MultiPolygon -> Polygon, novo length:`, coordinates?.length);
             }
 
             const centroid = getCentroid(coordinates);
+            console.log(`   🎯 Centroid calculado:`, centroid);
+            
             if (centroid) {
                 const distance = calculateDistance(
                     position.lat,
@@ -76,12 +85,71 @@ export function getDistanceToGeoJSON(
                     centroid.lat,
                     centroid.lng
                 );
+                console.log(`   📏 Distância calculada: ${Math.round(distance)}m`);
                 minDistance = Math.min(minDistance, distance);
+            }
+        } else if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
+            const geometry = feature.geometry as any;
+            let coordinates = geometry.coordinates;
+
+            console.log(`   📐 Tipo: ${geometryType}, Coords length:`, coordinates?.length);
+
+            // Para MultiLineString, processar todas as linhas
+            if (geometryType === 'MultiLineString') {
+                for (const lineString of coordinates) {
+                    const centroid = getCentroidFromLineString(lineString);
+                    console.log(`   🎯 Centroid (LineString):`, centroid);
+                    
+                    if (centroid) {
+                        const distance = calculateDistance(
+                            position.lat,
+                            position.lng,
+                            centroid.lat,
+                            centroid.lng
+                        );
+                        console.log(`   📏 Distância calculada: ${Math.round(distance)}m`);
+                        minDistance = Math.min(minDistance, distance);
+                    }
+                }
+            } else {
+                // LineString simples
+                const centroid = getCentroidFromLineString(coordinates);
+                console.log(`   🎯 Centroid (LineString):`, centroid);
+                
+                if (centroid) {
+                    const distance = calculateDistance(
+                        position.lat,
+                        position.lng,
+                        centroid.lat,
+                        centroid.lng
+                    );
+                    console.log(`   📏 Distância calculada: ${Math.round(distance)}m`);
+                    minDistance = Math.min(minDistance, distance);
+                }
             }
         }
     }
 
+    console.log(`   ✅ Distância mínima final: ${minDistance === Infinity ? 'INFINITY' : Math.round(minDistance) + 'm'}`);
     return minDistance;
+}
+
+/**
+ * Calcula o centróide de um LineString (array de pontos)
+ */
+function getCentroidFromLineString(points: [number, number][]): { lat: number; lng: number } | null {
+    if (!points || points.length === 0) return null;
+    
+    let lat = 0;
+    let lng = 0;
+    points.forEach(([lon, latCoord]) => {
+        lng += lon;
+        lat += latCoord;
+    });
+    return {
+        lat: lat / points.length,
+        lng: lng / points.length,
+    };
 }
 
 export interface NearbySector {

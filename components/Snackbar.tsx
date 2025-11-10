@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import type { NearbySector } from '../utils/geoUtils';
 
 interface SnackbarProps {
@@ -8,6 +8,7 @@ interface SnackbarProps {
     nearbySectors: NearbySector[];
     selectedOperacao: string;
     onSelectSector: (sector: NearbySector) => void;
+    onDismiss?: () => void;
 }
 
 export const Snackbar: React.FC<SnackbarProps> = ({
@@ -17,9 +18,52 @@ export const Snackbar: React.FC<SnackbarProps> = ({
     nearbySectors,
     selectedOperacao,
     onSelectSector,
+    onDismiss,
 }) => {
+    const [showDetectedCity, setShowDetectedCity] = useState(false);
+    const [showNearbySectors, setShowNearbySectors] = useState(false);
+    
+    // Refs para rastrear qual cidade/setores já foram mostrados
+    const lastShownCity = useRef<string | null>(null);
+    const lastShownSectorsKey = useRef<string>('');
+
+    // Detectar quando uma NOVA cidade é detectada e mostrar notificação
+    useEffect(() => {
+        if (detectedCityName && !isDetectingCity && detectedCityName !== lastShownCity.current) {
+            // Nova cidade detectada - mostrar notificação
+            lastShownCity.current = detectedCityName;
+            setShowDetectedCity(true);
+            
+            // Auto-dismiss após 3 segundos
+            const timer = setTimeout(() => {
+                setShowDetectedCity(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [detectedCityName, isDetectingCity]);
+
+    // Detectar quando NOVOS setores são encontrados e mostrar notificação
+    useEffect(() => {
+        if (nearbySectors.length > 0 && !isLoadingNearby) {
+            // Criar chave única baseada nos IDs dos setores
+            const sectorsKey = nearbySectors.map(s => s.setor).sort().join(',');
+            
+            if (sectorsKey !== lastShownSectorsKey.current) {
+                // Novos setores encontrados - mostrar notificação
+                lastShownSectorsKey.current = sectorsKey;
+                setShowNearbySectors(true);
+                
+                // Auto-dismiss após 10 segundos
+                const timer = setTimeout(() => {
+                    setShowNearbySectors(false);
+                }, 10000);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [nearbySectors, isLoadingNearby]);
+
     // Não mostrar nada se não houver notificações
-    const hasNotification = isDetectingCity || detectedCityName || isLoadingNearby || nearbySectors.length > 0;
+    const hasNotification = isDetectingCity || (detectedCityName && showDetectedCity) || isLoadingNearby || (nearbySectors.length > 0 && showNearbySectors);
     
     if (!hasNotification) return null;
 
@@ -39,16 +83,23 @@ export const Snackbar: React.FC<SnackbarProps> = ({
             )}
 
             {/* Cidade detectada */}
-            {detectedCityName && !isDetectingCity && !isLoadingNearby && nearbySectors.length === 0 && (
-                <div className="bg-green-900 bg-opacity-90 border border-green-700 rounded-lg shadow-2xl p-4 animate-slide-up">
-                    <div className="flex items-center">
-                        <svg className="w-6 h-6 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                            <div className="text-sm font-medium text-green-300">Cidade detectada</div>
-                            <div className="text-base font-bold text-white">{detectedCityName}</div>
+            {detectedCityName && !isDetectingCity && !isLoadingNearby && nearbySectors.length === 0 && showDetectedCity && (
+                <div 
+                    onClick={() => setShowDetectedCity(false)}
+                    className="bg-green-900 bg-opacity-95 border border-green-700 rounded-lg shadow-2xl p-4 animate-slide-up cursor-pointer hover:bg-opacity-100 transition-all"
+                    title="Clique para fechar"
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <svg className="w-6 h-6 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <div className="text-sm font-medium text-green-300">Cidade detectada</div>
+                                <div className="text-base font-bold text-white">{detectedCityName}</div>
+                            </div>
                         </div>
+                        <span className="text-xs text-green-400 opacity-60">clique para fechar</span>
                     </div>
                 </div>
             )}
@@ -69,16 +120,28 @@ export const Snackbar: React.FC<SnackbarProps> = ({
             )}
 
             {/* Top 3 setores próximos */}
-            {nearbySectors.length > 0 && !isLoadingNearby && selectedOperacao && (
-                <div className="bg-blue-900 bg-opacity-95 border border-blue-700 rounded-lg shadow-2xl p-4 animate-slide-up max-w-md">
+            {nearbySectors.length > 0 && !isLoadingNearby && selectedOperacao && showNearbySectors && (
+                <div className="bg-blue-900 bg-opacity-95 border border-blue-700 rounded-lg shadow-2xl p-4 animate-slide-up max-w-md relative">
+                    {/* Botão fechar */}
+                    <button
+                        onClick={() => setShowNearbySectors(false)}
+                        className="absolute top-2 right-2 text-blue-300 hover:text-white transition-colors"
+                        title="Fechar"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    
                     <div className="flex items-center mb-3">
                         <svg className="w-6 h-6 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <h3 className="text-sm font-bold text-blue-300">
+                        <h3 className="text-sm font-bold text-blue-300 flex-1">
                             Top 3 setores - {selectedOperacao.toUpperCase()}
                         </h3>
+                        <span className="text-xs text-blue-400 opacity-60">10s</span>
                     </div>
                     <div className="space-y-2">
                         {nearbySectors.map((nearby, index) => (

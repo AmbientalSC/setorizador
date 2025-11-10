@@ -165,6 +165,13 @@ export const getNearbySectorsByOperation = async (
             try {
                 const geoJSON = await getSectorGeoJSONByOperacao(operacao, cityId, sector.id);
                 if (geoJSON) {
+                    console.log(`🔍 GeoJSON do setor ${sector.nome}:`, {
+                        hasFeatures: !!geoJSON.features,
+                        featuresCount: geoJSON.features?.length,
+                        firstFeatureType: geoJSON.features?.[0]?.geometry?.type,
+                        firstFeatureCoords: geoJSON.features?.[0]?.geometry?.coordinates?.[0]?.[0]
+                    });
+                    
                     const distance = getDistanceToGeoJSON(position, geoJSON);
                     console.log(`   ${sector.nome}: ${Math.round(distance)}m ${distance <= maxDistance ? '✓' : '✗'}`);
                     
