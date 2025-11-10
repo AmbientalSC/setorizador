@@ -86,7 +86,13 @@ function App() {
         setShowInitialModal(false);
 
         // Os useEffect já vão carregar os dados automaticamente
-    }; const fetchCities = useCallback(async () => {
+    };
+
+    const handleCloseInitialModal = () => {
+        setShowInitialModal(false);
+    };
+    
+    const fetchCities = useCallback(async () => {
         if (!selectedOperacao) {
             setCities([]);
             return;
@@ -177,7 +183,7 @@ function App() {
         <div className="flex flex-col h-screen bg-gray-800 text-white font-sans">
             {/* Initial Modal */}
             {showInitialModal && !user && (
-                <InitialModal onSubmit={handleInitialSubmit} />
+                <InitialModal onSubmit={handleInitialSubmit} onClose={handleCloseInitialModal} />
             )}
 
             {/* Login Modal */}

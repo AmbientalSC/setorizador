@@ -4,6 +4,7 @@ import type { City, Sector } from '../types';
 
 interface InitialModalProps {
     onSubmit: (operacao: string, cidade: string, setor: string, setorNome: string) => void;
+    onClose?: () => void;
 }
 
 // Searchable Select Component for Modal
@@ -103,7 +104,7 @@ const ModalSearchableSelect = ({
     );
 };
 
-export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit }) => {
+export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose }) => {
     const [operacao, setOperacao] = useState('');
     const [cidade, setCidade] = useState('');
     const [setor, setSetor] = useState('');
@@ -196,7 +197,20 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit }) => {
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-80">
             <div className="max-w-md w-full mx-4">
-                <div className="bg-gray-800 rounded-lg shadow-2xl p-8">
+                <div className="bg-gray-800 rounded-lg shadow-2xl p-8 relative">
+                    {/* Botão de Fechar */}
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                            aria-label="Fechar"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    )}
+                    
                     <div className="text-center mb-6">
                         <h1 className="text-3xl font-bold text-white mb-2">AmbSetores</h1>
                         <p className="text-gray-400 text-sm">Visualizador de Setores de Coleta</p>
