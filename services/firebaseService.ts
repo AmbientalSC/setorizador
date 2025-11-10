@@ -70,50 +70,101 @@ export const updateSectorGeoJSONByOperacao = async (operacao: string, cityId: st
 
 /**
  * Busca setores próximos à posição do usuário (dentro de um raio especificado)
+ * OTIMIZADO: Carrega apenas setores da cidade mais próxima ao invés de todas
  */
 export const getNearbySectors = async (
     position: { lat: number; lng: number },
     maxDistance: number = 500
 ): Promise<NearbySector[]> => {
     const nearbySectors: NearbySector[] = [];
-    const operacoes = await getOperacoes();
+    
+    // Coordenadas aproximadas das principais cidades (centros)
+    const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
+        'joinville': { lat: -26.3045, lng: -48.8487 },
+        'itajai': { lat: -26.9077, lng: -48.6619 },
+        'balneario_camboriu': { lat: -26.9908, lng: -48.6354 },
+        'bc_bt': { lat: -26.9908, lng: -48.6354 },
+        'camboriu': { lat: -27.0245, lng: -48.6551 },
+        'sao_jose': { lat: -27.6099, lng: -48.6345 },
+        'chapeco': { lat: -27.0965, lng: -52.6158 },
+        'jaragua_do_sul': { lat: -26.4858, lng: -49.0776 },
+        'rio_do_sul': { lat: -27.2144, lng: -49.6428 },
+        'sfs': { lat: -26.2427, lng: -48.6378 }, // São Francisco do Sul
+        'itapema': { lat: -27.0892, lng: -48.6111 },
+        'itapema_bt': { lat: -27.0892, lng: -48.6111 },
+        'abelardo_luz': { lat: -26.5716, lng: -52.3290 },
+        'campo_ere': { lat: -26.3968, lng: -53.0773 },
+        'coronel_freitas': { lat: -26.9046, lng: -52.7030 },
+        'erval_velho': { lat: -27.2758, lng: -51.4511 },
+        'santa_cecilia': { lat: -26.9591, lng: -50.4252 },
+        'xanxere': { lat: -26.8768, lng: -52.4037 },
+    };
 
+    const operacoes = await getOperacoes();
+    
+    // Primeiro, encontrar a cidade mais próxima
+    let closestCity: { operacao: string; city: City; distance: number } | null = null;
+    
     for (const operacao of operacoes) {
         try {
             const cities = await getCitiesByOperacao(operacao);
-
+            
             for (const city of cities) {
-                try {
-                    const sectors = await getSectorsByOperacaoAndCity(operacao, city.id);
-
-                    for (const sector of sectors) {
-                        try {
-                            const geoJSON = await getSectorGeoJSONByOperacao(operacao, city.id, sector.id);
-                            if (geoJSON) {
-                                const distance = getDistanceToGeoJSON(position, geoJSON);
-                                
-                                if (distance <= maxDistance) {
-                                    nearbySectors.push({
-                                        operacao,
-                                        cidade: city.nome,
-                                        cidadeId: city.id,
-                                        setor: sector.id,
-                                        setorNome: sector.nome,
-                                        distance,
-                                    });
-                                }
-                            }
-                        } catch (error) {
-                            console.error(`Error loading sector ${sector.id}:`, error);
-                        }
+                const cityCoord = cityCoordinates[city.id];
+                if (cityCoord) {
+                    const distance = Math.sqrt(
+                        Math.pow(position.lat - cityCoord.lat, 2) +
+                        Math.pow(position.lng - cityCoord.lng, 2)
+                    ) * 111000; // Conversão aproximada para metros
+                    
+                    if (!closestCity || distance < closestCity.distance) {
+                        closestCity = { operacao, city, distance };
                     }
-                } catch (error) {
-                    console.error(`Error loading sectors for city ${city.id}:`, error);
                 }
             }
         } catch (error) {
             console.error(`Error loading cities for operacao ${operacao}:`, error);
         }
+    }
+
+    // Se não encontrou cidade próxima, retorna vazio
+    if (!closestCity || closestCity.distance > 50000) { // 50km
+        console.log('Nenhuma cidade próxima encontrada');
+        return [];
+    }
+
+    console.log(`Cidade mais próxima: ${closestCity.city.nome} (${closestCity.operacao})`);
+
+    // Agora buscar setores apenas dessa cidade
+    try {
+        const sectors = await getSectorsByOperacaoAndCity(closestCity.operacao, closestCity.city.id);
+        
+        // Limitar a 10 setores para evitar muitas requisições
+        const sectorsToCheck = sectors.slice(0, 10);
+        
+        for (const sector of sectorsToCheck) {
+            try {
+                const geoJSON = await getSectorGeoJSONByOperacao(closestCity.operacao, closestCity.city.id, sector.id);
+                if (geoJSON) {
+                    const distance = getDistanceToGeoJSON(position, geoJSON);
+                    
+                    if (distance <= maxDistance) {
+                        nearbySectors.push({
+                            operacao: closestCity.operacao,
+                            cidade: closestCity.city.nome,
+                            cidadeId: closestCity.city.id,
+                            setor: sector.id,
+                            setorNome: sector.nome,
+                            distance,
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(`Error loading sector ${sector.id}:`, error);
+            }
+        }
+    } catch (error) {
+        console.error(`Error loading sectors:`, error);
     }
 
     // Ordenar por distância
