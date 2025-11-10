@@ -3,6 +3,7 @@ import { Controls } from './components/Controls';
 import { MapComponent } from './components/MapComponent';
 import { Login } from './components/Login';
 import { InitialModal } from './components/InitialModal';
+import { Snackbar } from './components/Snackbar';
 import { AdminManagement } from './components/AdminManagement';
 import { useGeolocation } from './hooks/useGeolocation';
 import {
@@ -13,6 +14,7 @@ import {
 import { login, logout, onAuthChange } from './services/authService';
 import type { City, Sector, GeoJSONFeatureCollection } from './types';
 import type { User } from 'firebase/auth';
+import type { NearbySector } from './utils/geoUtils';
 
 function App() {
     const { position, positionHistory, error: geoError } = useGeolocation();
@@ -36,6 +38,13 @@ function App() {
     const [dataVersion, setDataVersion] = useState(0);
     const [activeTab, setActiveTab] = useState<'mapa' | 'gerenciamento' | 'debug'>('mapa');
     const [debugTrail, setDebugTrail] = useState<{ lat: number; lng: number }[]>([]);
+    
+    // Estados para o Snackbar
+    const [isDetectingCity, setIsDetectingCity] = useState(false);
+    const [detectedCityName, setDetectedCityName] = useState<string | null>(null);
+    const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+    const [nearbySectors, setNearbySectors] = useState<NearbySector[]>([]);
+    const [snackbarOperacao, setSnackbarOperacao] = useState<string>('');
 
     // Check authentication state
     useEffect(() => {
@@ -90,6 +99,16 @@ function App() {
 
     const handleCloseInitialModal = () => {
         setShowInitialModal(false);
+    };
+
+    const handleSelectSectorFromSnackbar = (sector: NearbySector) => {
+        setSelectedOperacao(sector.operacao);
+        setSelectedCityId(sector.cidadeId);
+        setSelectedSectorName(sector.setor);
+        setSelectedSectorDisplayName(sector.setorNome);
+        setShowInitialModal(false);
+        // Limpar setores próximos após seleção
+        setNearbySectors([]);
     };
     
     const fetchCities = useCallback(async () => {
@@ -187,8 +206,23 @@ function App() {
                     onSubmit={handleInitialSubmit} 
                     onClose={handleCloseInitialModal}
                     userPosition={position}
+                    onDetectingCityChange={setIsDetectingCity}
+                    onDetectedCityChange={setDetectedCityName}
+                    onLoadingNearbyChange={setIsLoadingNearby}
+                    onNearbySectorsChange={setNearbySectors}
+                    onOperacaoChange={setSnackbarOperacao}
                 />
             )}
+
+            {/* Snackbar para notificações */}
+            <Snackbar
+                isDetectingCity={isDetectingCity}
+                detectedCityName={detectedCityName}
+                isLoadingNearby={isLoadingNearby}
+                nearbySectors={nearbySectors}
+                selectedOperacao={snackbarOperacao}
+                onSelectSector={handleSelectSectorFromSnackbar}
+            />
 
             {/* Login Modal */}
             {!user && loginError !== null && (
