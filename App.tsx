@@ -183,7 +183,11 @@ function App() {
         <div className="flex flex-col h-screen bg-gray-800 text-white font-sans">
             {/* Initial Modal */}
             {showInitialModal && !user && (
-                <InitialModal onSubmit={handleInitialSubmit} onClose={handleCloseInitialModal} />
+                <InitialModal 
+                    onSubmit={handleInitialSubmit} 
+                    onClose={handleCloseInitialModal}
+                    userPosition={position}
+                />
             )}
 
             {/* Login Modal */}

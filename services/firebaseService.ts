@@ -2,6 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, getDocs, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { City, Sector, GeoJSONFeatureCollection, GeoJSONFeature, GeoJSONProperties } from '../types';
+import { getDistanceToGeoJSON, type NearbySector } from '../utils/geoUtils';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -65,6 +66,58 @@ export const updateSectorGeoJSONByOperacao = async (operacao: string, cityId: st
         nome: sectorName,
         geoJSON: JSON.stringify(geoJSON),
     }, { merge: true });
+};
+
+/**
+ * Busca setores próximos à posição do usuário (dentro de um raio especificado)
+ */
+export const getNearbySectors = async (
+    position: { lat: number; lng: number },
+    maxDistance: number = 500
+): Promise<NearbySector[]> => {
+    const nearbySectors: NearbySector[] = [];
+    const operacoes = await getOperacoes();
+
+    for (const operacao of operacoes) {
+        try {
+            const cities = await getCitiesByOperacao(operacao);
+
+            for (const city of cities) {
+                try {
+                    const sectors = await getSectorsByOperacaoAndCity(operacao, city.id);
+
+                    for (const sector of sectors) {
+                        try {
+                            const geoJSON = await getSectorGeoJSONByOperacao(operacao, city.id, sector.id);
+                            if (geoJSON) {
+                                const distance = getDistanceToGeoJSON(position, geoJSON);
+                                
+                                if (distance <= maxDistance) {
+                                    nearbySectors.push({
+                                        operacao,
+                                        cidade: city.nome,
+                                        cidadeId: city.id,
+                                        setor: sector.id,
+                                        setorNome: sector.nome,
+                                        distance,
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.error(`Error loading sector ${sector.id}:`, error);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error loading sectors for city ${city.id}:`, error);
+                }
+            }
+        } catch (error) {
+            console.error(`Error loading cities for operacao ${operacao}:`, error);
+        }
+    }
+
+    // Ordenar por distância
+    return nearbySectors.sort((a, b) => a.distance - b.distance);
 };
 
 // Legacy functions (keep for compatibility)

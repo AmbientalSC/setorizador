@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity } from '../services/firebaseService';
+import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity, getNearbySectors } from '../services/firebaseService';
 import type { City, Sector } from '../types';
+import type { NearbySector } from '../utils/geoUtils';
 
 interface InitialModalProps {
     onSubmit: (operacao: string, cidade: string, setor: string, setorNome: string) => void;
     onClose?: () => void;
+    userPosition?: { lat: number; lng: number } | null;
 }
 
 // Searchable Select Component for Modal
@@ -104,13 +106,15 @@ const ModalSearchableSelect = ({
     );
 };
 
-export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose }) => {
+export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, userPosition }) => {
     const [operacao, setOperacao] = useState('');
     const [cidade, setCidade] = useState('');
     const [setor, setSetor] = useState('');
     const [operacoes, setOperacoes] = useState<string[]>([]);
     const [cities, setCities] = useState<City[]>([]);
     const [sectors, setSectors] = useState<Sector[]>([]);
+    const [nearbySectors, setNearbySectors] = useState<NearbySector[]>([]);
+    const [isLoadingNearby, setIsLoadingNearby] = useState(false);
     const [isLoading, setIsLoading] = useState({
         operacoes: true,
         cities: false,
@@ -131,6 +135,25 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose })
         };
         loadOperacoes();
     }, []);
+
+    // Buscar setores próximos quando a posição estiver disponível
+    useEffect(() => {
+        if (userPosition) {
+            const loadNearbySectors = async () => {
+                setIsLoadingNearby(true);
+                try {
+                    const nearby = await getNearbySectors(userPosition, 500);
+                    setNearbySectors(nearby);
+                } catch (error) {
+                    console.error('Error loading nearby sectors:', error);
+                    setNearbySectors([]);
+                } finally {
+                    setIsLoadingNearby(false);
+                }
+            };
+            loadNearbySectors();
+        }
+    }, [userPosition]);
 
     // Carregar cidades quando operação mudar
     useEffect(() => {
@@ -192,6 +215,16 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose })
         }
     };
 
+    const handleSelectNearbySector = (nearby: NearbySector) => {
+        setOperacao(nearby.operacao);
+        setCidade(nearby.cidadeId);
+        setSetor(nearby.setor);
+        // Automaticamente submeter
+        setTimeout(() => {
+            onSubmit(nearby.operacao, nearby.cidadeId, nearby.setor, nearby.setorNome);
+        }, 100);
+    };
+
     const isValid = operacao && cidade && setor;
 
     return (
@@ -215,6 +248,57 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose })
                         <h1 className="text-3xl font-bold text-white mb-2">AmbSetores</h1>
                         <p className="text-gray-400 text-sm">Visualizador de Setores de Coleta</p>
                     </div>
+
+                    {/* Setores Próximos */}
+                    {nearbySectors.length > 0 && (
+                        <div className="mb-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
+                            <div className="flex items-center mb-3">
+                                <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <h3 className="text-sm font-semibold text-blue-300">Setores próximos a você</h3>
+                            </div>
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {nearbySectors.slice(0, 5).map((nearby, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleSelectNearbySector(nearby)}
+                                        className="w-full text-left p-3 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors group"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="font-medium text-white group-hover:text-blue-300 transition-colors">
+                                                    {nearby.setorNome}
+                                                </div>
+                                                <div className="text-xs text-gray-400 mt-0.5">
+                                                    {nearby.operacao.toUpperCase()} - {nearby.cidade}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-blue-400 whitespace-nowrap ml-2">
+                                                {nearby.distance < 1000 
+                                                    ? `${Math.round(nearby.distance)}m`
+                                                    : `${(nearby.distance / 1000).toFixed(1)}km`
+                                                }
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {isLoadingNearby && (
+                        <div className="mb-6 p-4 bg-gray-700 rounded-lg text-center">
+                            <div className="flex items-center justify-center">
+                                <svg className="animate-spin h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="text-sm text-gray-300">Buscando setores próximos...</span>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-4">
                         {/* Operação */}
