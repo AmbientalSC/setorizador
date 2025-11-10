@@ -132,6 +132,7 @@ export const detectUserCity = async (
 /**
  * Busca setores próximos à posição do usuário dentro de uma cidade específica
  * SUPER OTIMIZADO: Primeiro detecta a cidade, depois busca apenas setores daquela cidade
+ * LIMITADO: Máximo de 20 setores por operação para evitar sobrecarga
  */
 export const getNearbySectors = async (
     position: { lat: number; lng: number },
@@ -139,6 +140,8 @@ export const getNearbySectors = async (
     cityInfo?: { operacao: string; city: City } // Cidade já detectada (opcional)
 ): Promise<NearbySector[]> => {
     const nearbySectors: NearbySector[] = [];
+    const MAX_SECTORS_PER_OPERATION = 20; // Limite para evitar centenas de requisições
+    const MAX_TOTAL_NEARBY = 10; // Parar quando encontrar 10 setores próximos
     
     // Se a cidade não foi fornecida, detectar primeiro
     let targetCity = cityInfo;
@@ -157,11 +160,25 @@ export const getNearbySectors = async (
     const operacoes = await getOperacoes();
     
     for (const operacao of operacoes) {
+        // Se já encontrou setores suficientes, parar
+        if (nearbySectors.length >= MAX_TOTAL_NEARBY) {
+            console.log(`Já encontrados ${nearbySectors.length} setores, parando busca`);
+            break;
+        }
+
         try {
             const sectors = await getSectorsByOperacaoAndCity(operacao, targetCity.city.id);
             
-            // Verificar todos os setores dessa operação na cidade
-            for (const sector of sectors) {
+            // IMPORTANTE: Limitar quantos setores verificar por operação
+            const sectorsToCheck = sectors.slice(0, MAX_SECTORS_PER_OPERATION);
+            console.log(`Verificando ${sectorsToCheck.length} de ${sectors.length} setores em ${operacao}`);
+            
+            for (const sector of sectorsToCheck) {
+                // Se já encontrou setores suficientes, parar
+                if (nearbySectors.length >= MAX_TOTAL_NEARBY) {
+                    break;
+                }
+
                 try {
                     const geoJSON = await getSectorGeoJSONByOperacao(operacao, targetCity.city.id, sector.id);
                     if (geoJSON) {
@@ -176,6 +193,7 @@ export const getNearbySectors = async (
                                 setorNome: sector.nome,
                                 distance,
                             });
+                            console.log(`✓ Setor próximo encontrado: ${sector.nome} (${Math.round(distance)}m)`);
                         }
                     }
                 } catch (error) {
@@ -188,6 +206,8 @@ export const getNearbySectors = async (
         }
     }
 
+    console.log(`Total de setores próximos encontrados: ${nearbySectors.length}`);
+    
     // Ordenar por distância
     return nearbySectors.sort((a, b) => a.distance - b.distance);
 };
