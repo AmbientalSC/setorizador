@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity, getNearbySectors, detectUserCity } from '../services/firebaseService';
+import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity, getNearbySectorsByOperation, detectUserCity } from '../services/firebaseService';
 import type { City, Sector } from '../types';
 import type { NearbySector } from '../utils/geoUtils';
 
@@ -114,7 +114,8 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
     const [cities, setCities] = useState<City[]>([]);
     const [sectors, setSectors] = useState<Sector[]>([]);
     const [nearbySectors, setNearbySectors] = useState<NearbySector[]>([]);
-    const [detectedCity, setDetectedCity] = useState<{ nome: string; distance: number } | null>(null);
+    const [detectedCityId, setDetectedCityId] = useState<string | null>(null);
+    const [detectedCityName, setDetectedCityName] = useState<string | null>(null);
     const [isLoadingNearby, setIsLoadingNearby] = useState(false);
     const [isDetectingCity, setIsDetectingCity] = useState(false);
     const [isLoading, setIsLoading] = useState({
@@ -138,45 +139,66 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
         loadOperacoes();
     }, []);
 
-    // Detectar cidade e buscar setores próximos quando a posição estiver disponível
+    // Detectar e pré-selecionar cidade quando a posição estiver disponível
     useEffect(() => {
         if (userPosition) {
-            const detectAndLoadNearbySectors = async () => {
+            const detectAndSelectCity = async () => {
                 setIsDetectingCity(true);
-                setIsLoadingNearby(true);
                 try {
-                    // Primeiro detectar a cidade
                     const cityInfo = await detectUserCity(userPosition);
                     
                     if (cityInfo) {
-                        setDetectedCity({
-                            nome: cityInfo.city.nome,
-                            distance: cityInfo.distance
-                        });
-                        
-                        // Depois buscar setores próximos apenas nessa cidade
-                        const nearby = await getNearbySectors(
-                            userPosition, 
-                            500,
-                            { operacao: cityInfo.operacao, city: cityInfo.city }
-                        );
-                        setNearbySectors(nearby);
+                        setDetectedCityId(cityInfo.city.id);
+                        setDetectedCityName(cityInfo.city.nome);
+                        // Auto-selecionar a cidade detectada
+                        setCidade(cityInfo.city.id);
+                        console.log(`✅ Cidade detectada e selecionada: ${cityInfo.city.nome}`);
                     } else {
-                        setDetectedCity(null);
-                        setNearbySectors([]);
+                        setDetectedCityId(null);
+                        setDetectedCityName(null);
                     }
                 } catch (error) {
-                    console.error('Error detecting city or loading nearby sectors:', error);
-                    setDetectedCity(null);
-                    setNearbySectors([]);
+                    console.error('Error detecting city:', error);
+                    setDetectedCityId(null);
+                    setDetectedCityName(null);
                 } finally {
                     setIsDetectingCity(false);
+                }
+            };
+            detectAndSelectCity();
+        }
+    }, [userPosition]);
+
+    // Buscar setores próximos quando OPERAÇÃO for selecionada (e temos posição + cidade)
+    useEffect(() => {
+        if (userPosition && operacao && cidade) {
+            const loadNearbySectors = async () => {
+                setIsLoadingNearby(true);
+                setNearbySectors([]);
+                try {
+                    const cityName = cities.find(c => c.id === cidade)?.nome || cidade;
+                    const nearby = await getNearbySectorsByOperation(
+                        userPosition,
+                        operacao,
+                        cidade,
+                        cityName,
+                        500, // maxDistance
+                        3    // maxResults - apenas 3 setores
+                    );
+                    setNearbySectors(nearby);
+                    console.log(`✅ Encontrados ${nearby.length} setores próximos`);
+                } catch (error) {
+                    console.error('Error loading nearby sectors:', error);
+                    setNearbySectors([]);
+                } finally {
                     setIsLoadingNearby(false);
                 }
             };
-            detectAndLoadNearbySectors();
+            loadNearbySectors();
+        } else {
+            setNearbySectors([]);
         }
-    }, [userPosition]);
+    }, [userPosition, operacao, cidade, cities]);
 
     // Carregar cidades quando operação mudar
     useEffect(() => {
@@ -285,47 +307,55 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
                         </div>
                     )}
 
-                    {detectedCity && !isDetectingCity && (
+                    {detectedCityName && !isDetectingCity && (
                         <div className="mb-4 p-3 bg-green-900 bg-opacity-30 border border-green-700 rounded-lg">
-                            <div className="flex items-center">
-                                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <div>
-                                    <span className="text-sm font-medium text-green-300">Você está em: </span>
-                                    <span className="text-sm font-bold text-white">{detectedCity.nome}</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <span className="text-sm font-medium text-green-300">Cidade detectada: </span>
+                                        <span className="text-sm font-bold text-white">{detectedCityName}</span>
+                                    </div>
                                 </div>
+                                <span className="text-xs text-green-400">✓ Selecionada</span>
                             </div>
                         </div>
                     )}
 
-                    {/* Setores Próximos */}
-                    {nearbySectors.length > 0 && (
+                    {/* Setores Próximos - Apenas após selecionar operação */}
+                    {nearbySectors.length > 0 && operacao && (
                         <div className="mb-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
                             <div className="flex items-center mb-3">
                                 <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                <h3 className="text-sm font-semibold text-blue-300">Setores próximos a você</h3>
+                                <h3 className="text-sm font-semibold text-blue-300">
+                                    Top 3 setores mais próximos - {operacao.toUpperCase()}
+                                </h3>
                             </div>
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                                {nearbySectors.slice(0, 5).map((nearby, index) => (
+                            <div className="space-y-2">
+                                {nearbySectors.map((nearby, index) => (
                                     <button
                                         key={index}
                                         onClick={() => handleSelectNearbySector(nearby)}
                                         className="w-full text-left p-3 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors group"
                                     >
                                         <div className="flex justify-between items-start">
-                                            <div>
-                                                <div className="font-medium text-white group-hover:text-blue-300 transition-colors">
-                                                    {nearby.setorNome}
-                                                </div>
-                                                <div className="text-xs text-gray-400 mt-0.5">
-                                                    {nearby.operacao.toUpperCase()}
+                                            <div className="flex items-center">
+                                                <span className="text-lg font-bold text-blue-400 mr-3">#{index + 1}</span>
+                                                <div>
+                                                    <div className="font-medium text-white group-hover:text-blue-300 transition-colors">
+                                                        {nearby.setorNome}
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 mt-0.5">
+                                                        Clique para selecionar
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="text-xs text-blue-400 whitespace-nowrap ml-2">
+                                            <div className="text-sm font-semibold text-blue-400 whitespace-nowrap ml-2">
                                                 {nearby.distance < 1000 
                                                     ? `${Math.round(nearby.distance)}m`
                                                     : `${(nearby.distance / 1000).toFixed(1)}km`
@@ -338,14 +368,14 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
                         </div>
                     )}
 
-                    {isLoadingNearby && !isDetectingCity && (
+                    {isLoadingNearby && !isDetectingCity && operacao && (
                         <div className="mb-6 p-4 bg-gray-700 rounded-lg text-center">
                             <div className="flex items-center justify-center">
                                 <svg className="animate-spin h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span className="text-sm text-gray-300">Buscando setores próximos...</span>
+                                <span className="text-sm text-gray-300">Buscando os 3 setores mais próximos de {operacao}...</span>
                             </div>
                         </div>
                     )}

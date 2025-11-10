@@ -130,86 +130,65 @@ export const detectUserCity = async (
 };
 
 /**
- * Busca setores próximos à posição do usuário dentro de uma cidade específica
- * SUPER OTIMIZADO: Primeiro detecta a cidade, depois busca apenas setores daquela cidade
- * LIMITADO: Máximo de 20 setores por operação para evitar sobrecarga
+ * Busca os 3 setores mais próximos de uma operação específica em uma cidade
+ * ULTRA OTIMIZADO: Busca apenas UMA operação e retorna no máximo 3 setores
  */
-export const getNearbySectors = async (
+export const getNearbySectorsByOperation = async (
     position: { lat: number; lng: number },
+    operacao: string,
+    cityId: string,
+    cityName: string,
     maxDistance: number = 500,
-    cityInfo?: { operacao: string; city: City } // Cidade já detectada (opcional)
+    maxResults: number = 3
 ): Promise<NearbySector[]> => {
     const nearbySectors: NearbySector[] = [];
-    const MAX_SECTORS_PER_OPERATION = 20; // Limite para evitar centenas de requisições
-    const MAX_TOTAL_NEARBY = 10; // Parar quando encontrar 10 setores próximos
+    const MAX_SECTORS_TO_CHECK = 30; // Verificar no máximo 30 setores
     
-    // Se a cidade não foi fornecida, detectar primeiro
-    let targetCity = cityInfo;
-    if (!targetCity) {
-        const detected = await detectUserCity(position);
-        if (!detected) {
-            console.log('Nenhuma cidade próxima encontrada');
-            return [];
-        }
-        targetCity = { operacao: detected.operacao, city: detected.city };
-    }
+    console.log(`🔍 Buscando até ${maxResults} setores de ${operacao} em ${cityName}...`);
 
-    console.log(`Buscando setores em: ${targetCity.city.nome}`);
-
-    // Buscar todas as operações para essa cidade
-    const operacoes = await getOperacoes();
-    
-    for (const operacao of operacoes) {
-        // Se já encontrou setores suficientes, parar
-        if (nearbySectors.length >= MAX_TOTAL_NEARBY) {
-            console.log(`Já encontrados ${nearbySectors.length} setores, parando busca`);
-            break;
-        }
-
-        try {
-            const sectors = await getSectorsByOperacaoAndCity(operacao, targetCity.city.id);
-            
-            // IMPORTANTE: Limitar quantos setores verificar por operação
-            const sectorsToCheck = sectors.slice(0, MAX_SECTORS_PER_OPERATION);
-            console.log(`Verificando ${sectorsToCheck.length} de ${sectors.length} setores em ${operacao}`);
-            
-            for (const sector of sectorsToCheck) {
-                // Se já encontrou setores suficientes, parar
-                if (nearbySectors.length >= MAX_TOTAL_NEARBY) {
-                    break;
-                }
-
-                try {
-                    const geoJSON = await getSectorGeoJSONByOperacao(operacao, targetCity.city.id, sector.id);
-                    if (geoJSON) {
-                        const distance = getDistanceToGeoJSON(position, geoJSON);
-                        
-                        if (distance <= maxDistance) {
-                            nearbySectors.push({
-                                operacao,
-                                cidade: targetCity.city.nome,
-                                cidadeId: targetCity.city.id,
-                                setor: sector.id,
-                                setorNome: sector.nome,
-                                distance,
-                            });
-                            console.log(`✓ Setor próximo encontrado: ${sector.nome} (${Math.round(distance)}m)`);
-                        }
-                    }
-                } catch (error) {
-                    console.error(`Error loading sector ${sector.id}:`, error);
-                }
+    try {
+        const sectors = await getSectorsByOperacaoAndCity(operacao, cityId);
+        
+        // Limitar quantos setores verificar
+        const sectorsToCheck = sectors.slice(0, MAX_SECTORS_TO_CHECK);
+        console.log(`📋 Verificando ${sectorsToCheck.length} de ${sectors.length} setores`);
+        
+        for (const sector of sectorsToCheck) {
+            // Se já encontrou os setores necessários, parar
+            if (nearbySectors.length >= maxResults) {
+                console.log(`✅ Já encontrados ${maxResults} setores, parando busca`);
+                break;
             }
-        } catch (error) {
-            // Cidade pode não ter setores para todas as operações
-            console.log(`Sem setores para ${operacao} em ${targetCity.city.nome}`);
+
+            try {
+                const geoJSON = await getSectorGeoJSONByOperacao(operacao, cityId, sector.id);
+                if (geoJSON) {
+                    const distance = getDistanceToGeoJSON(position, geoJSON);
+                    
+                    if (distance <= maxDistance) {
+                        nearbySectors.push({
+                            operacao,
+                            cidade: cityName,
+                            cidadeId: cityId,
+                            setor: sector.id,
+                            setorNome: sector.nome,
+                            distance,
+                        });
+                        console.log(`✓ Setor encontrado: ${sector.nome} (${Math.round(distance)}m)`);
+                    }
+                }
+            } catch (error) {
+                console.error(`❌ Error loading sector ${sector.id}:`, error);
+            }
         }
+    } catch (error) {
+        console.error(`❌ Error loading sectors for ${operacao}:`, error);
     }
 
-    console.log(`Total de setores próximos encontrados: ${nearbySectors.length}`);
+    console.log(`📊 Total encontrado: ${nearbySectors.length} setores`);
     
-    // Ordenar por distância
-    return nearbySectors.sort((a, b) => a.distance - b.distance);
+    // Ordenar por distância e retornar apenas os mais próximos
+    return nearbySectors.sort((a, b) => a.distance - b.distance).slice(0, maxResults);
 };
 
 // Legacy functions (keep for compatibility)
