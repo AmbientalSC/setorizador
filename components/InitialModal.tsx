@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity, getNearbySectors } from '../services/firebaseService';
+import { getOperacoes, getCitiesByOperacao, getSectorsByOperacaoAndCity, getNearbySectors, detectUserCity } from '../services/firebaseService';
 import type { City, Sector } from '../types';
 import type { NearbySector } from '../utils/geoUtils';
 
@@ -114,7 +114,9 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
     const [cities, setCities] = useState<City[]>([]);
     const [sectors, setSectors] = useState<Sector[]>([]);
     const [nearbySectors, setNearbySectors] = useState<NearbySector[]>([]);
+    const [detectedCity, setDetectedCity] = useState<{ nome: string; distance: number } | null>(null);
     const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+    const [isDetectingCity, setIsDetectingCity] = useState(false);
     const [isLoading, setIsLoading] = useState({
         operacoes: true,
         cities: false,
@@ -136,22 +138,43 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
         loadOperacoes();
     }, []);
 
-    // Buscar setores próximos quando a posição estiver disponível
+    // Detectar cidade e buscar setores próximos quando a posição estiver disponível
     useEffect(() => {
         if (userPosition) {
-            const loadNearbySectors = async () => {
+            const detectAndLoadNearbySectors = async () => {
+                setIsDetectingCity(true);
                 setIsLoadingNearby(true);
                 try {
-                    const nearby = await getNearbySectors(userPosition, 500);
-                    setNearbySectors(nearby);
+                    // Primeiro detectar a cidade
+                    const cityInfo = await detectUserCity(userPosition);
+                    
+                    if (cityInfo) {
+                        setDetectedCity({
+                            nome: cityInfo.city.nome,
+                            distance: cityInfo.distance
+                        });
+                        
+                        // Depois buscar setores próximos apenas nessa cidade
+                        const nearby = await getNearbySectors(
+                            userPosition, 
+                            500,
+                            { operacao: cityInfo.operacao, city: cityInfo.city }
+                        );
+                        setNearbySectors(nearby);
+                    } else {
+                        setDetectedCity(null);
+                        setNearbySectors([]);
+                    }
                 } catch (error) {
-                    console.error('Error loading nearby sectors:', error);
+                    console.error('Error detecting city or loading nearby sectors:', error);
+                    setDetectedCity(null);
                     setNearbySectors([]);
                 } finally {
+                    setIsDetectingCity(false);
                     setIsLoadingNearby(false);
                 }
             };
-            loadNearbySectors();
+            detectAndLoadNearbySectors();
         }
     }, [userPosition]);
 
@@ -249,6 +272,33 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
                         <p className="text-gray-400 text-sm">Visualizador de Setores de Coleta</p>
                     </div>
 
+                    {/* Cidade Detectada */}
+                    {isDetectingCity && (
+                        <div className="mb-4 p-3 bg-gray-700 rounded-lg text-center">
+                            <div className="flex items-center justify-center">
+                                <svg className="animate-spin h-4 w-4 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="text-sm text-gray-300">Detectando sua cidade...</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {detectedCity && !isDetectingCity && (
+                        <div className="mb-4 p-3 bg-green-900 bg-opacity-30 border border-green-700 rounded-lg">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <span className="text-sm font-medium text-green-300">Você está em: </span>
+                                    <span className="text-sm font-bold text-white">{detectedCity.nome}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Setores Próximos */}
                     {nearbySectors.length > 0 && (
                         <div className="mb-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
@@ -272,7 +322,7 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
                                                     {nearby.setorNome}
                                                 </div>
                                                 <div className="text-xs text-gray-400 mt-0.5">
-                                                    {nearby.operacao.toUpperCase()} - {nearby.cidade}
+                                                    {nearby.operacao.toUpperCase()}
                                                 </div>
                                             </div>
                                             <div className="text-xs text-blue-400 whitespace-nowrap ml-2">
@@ -288,7 +338,7 @@ export const InitialModal: React.FC<InitialModalProps> = ({ onSubmit, onClose, u
                         </div>
                     )}
 
-                    {isLoadingNearby && (
+                    {isLoadingNearby && !isDetectingCity && (
                         <div className="mb-6 p-4 bg-gray-700 rounded-lg text-center">
                             <div className="flex items-center justify-center">
                                 <svg className="animate-spin h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24">
