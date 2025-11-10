@@ -101,6 +101,27 @@ function App() {
         setShowInitialModal(false);
     };
 
+    // useCallback para evitar loop infinito nos useEffects do InitialModal
+    const handleDetectingCityChange = useCallback((isDetecting: boolean) => {
+        setIsDetectingCity(isDetecting);
+    }, []);
+
+    const handleDetectedCityChange = useCallback((cityName: string | null) => {
+        setDetectedCityName(cityName);
+    }, []);
+
+    const handleLoadingNearbyChange = useCallback((isLoading: boolean) => {
+        setIsLoadingNearby(isLoading);
+    }, []);
+
+    const handleNearbySectorsChange = useCallback((sectors: NearbySector[]) => {
+        setNearbySectors(sectors);
+    }, []);
+
+    const handleOperacaoChange = useCallback((operacao: string) => {
+        setSnackbarOperacao(operacao);
+    }, []);
+
     const handleSelectSectorFromSnackbar = (sector: NearbySector) => {
         setSelectedOperacao(sector.operacao);
         setSelectedCityId(sector.cidadeId);
@@ -206,11 +227,11 @@ function App() {
                     onSubmit={handleInitialSubmit} 
                     onClose={handleCloseInitialModal}
                     userPosition={position}
-                    onDetectingCityChange={setIsDetectingCity}
-                    onDetectedCityChange={setDetectedCityName}
-                    onLoadingNearbyChange={setIsLoadingNearby}
-                    onNearbySectorsChange={setNearbySectors}
-                    onOperacaoChange={setSnackbarOperacao}
+                    onDetectingCityChange={handleDetectingCityChange}
+                    onDetectedCityChange={handleDetectedCityChange}
+                    onLoadingNearbyChange={handleLoadingNearbyChange}
+                    onNearbySectorsChange={handleNearbySectorsChange}
+                    onOperacaoChange={handleOperacaoChange}
                 />
             )}
 

@@ -204,8 +204,8 @@ export const InitialModal: React.FC<InitialModalProps> = ({
                         operacao,
                         cidade,
                         cityName,
-                        500, // maxDistance
-                        3    // maxResults - apenas 3 setores
+                        5000, // maxDistance - 5km temporariamente para debug
+                        3     // maxResults - apenas 3 setores
                     );
                     setNearbySectors(nearby);
                     onNearbySectorsChange?.(nearby);
