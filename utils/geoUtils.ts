@@ -58,8 +58,6 @@ export function getDistanceToGeoJSON(
 ): number {
     let minDistance = Infinity;
 
-    console.log(`   🧮 Calculando distância. Features:`, geoJSON.features?.length);
-
     for (const feature of geoJSON.features) {
         const geometryType = feature.geometry.type;
         
@@ -67,16 +65,12 @@ export function getDistanceToGeoJSON(
             const geometry = feature.geometry as any;
             let coordinates = geometry.coordinates;
 
-            console.log(`   📐 Tipo: ${geometryType}, Coords length:`, coordinates?.length);
-
             // Para MultiPolygon, pegar o primeiro polígono
             if (geometryType === 'MultiPolygon') {
                 coordinates = coordinates[0];
-                console.log(`   📐 MultiPolygon -> Polygon, novo length:`, coordinates?.length);
             }
 
             const centroid = getCentroid(coordinates);
-            console.log(`   🎯 Centroid calculado:`, centroid);
             
             if (centroid) {
                 const distance = calculateDistance(
@@ -85,20 +79,16 @@ export function getDistanceToGeoJSON(
                     centroid.lat,
                     centroid.lng
                 );
-                console.log(`   📏 Distância calculada: ${Math.round(distance)}m`);
                 minDistance = Math.min(minDistance, distance);
             }
         } else if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
             const geometry = feature.geometry as any;
             let coordinates = geometry.coordinates;
 
-            console.log(`   📐 Tipo: ${geometryType}, Coords length:`, coordinates?.length);
-
             // Para MultiLineString, processar todas as linhas
             if (geometryType === 'MultiLineString') {
                 for (const lineString of coordinates) {
                     const centroid = getCentroidFromLineString(lineString);
-                    console.log(`   🎯 Centroid (LineString):`, centroid);
                     
                     if (centroid) {
                         const distance = calculateDistance(
@@ -107,14 +97,12 @@ export function getDistanceToGeoJSON(
                             centroid.lat,
                             centroid.lng
                         );
-                        console.log(`   📏 Distância calculada: ${Math.round(distance)}m`);
                         minDistance = Math.min(minDistance, distance);
                     }
                 }
             } else {
                 // LineString simples
                 const centroid = getCentroidFromLineString(coordinates);
-                console.log(`   🎯 Centroid (LineString):`, centroid);
                 
                 if (centroid) {
                     const distance = calculateDistance(
@@ -123,14 +111,12 @@ export function getDistanceToGeoJSON(
                         centroid.lat,
                         centroid.lng
                     );
-                    console.log(`   📏 Distância calculada: ${Math.round(distance)}m`);
                     minDistance = Math.min(minDistance, distance);
                 }
             }
         }
     }
 
-    console.log(`   ✅ Distância mínima final: ${minDistance === Infinity ? 'INFINITY' : Math.round(minDistance) + 'm'}`);
     return minDistance;
 }
 

@@ -187,44 +187,45 @@ export const InitialModal: React.FC<InitialModalProps> = ({
             };
             detectAndSelectCity();
         }
-    }, [userPosition, onDetectingCityChange, onDetectedCityChange]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userPosition]);
 
-    // Buscar setores próximos quando OPERAÇÃO for selecionada (e temos posição + cidade)
-    useEffect(() => {
-        if (userPosition && operacao && cidade) {
-            const loadNearbySectors = async () => {
-                setIsLoadingNearby(true);
-                onLoadingNearbyChange?.(true);
-                setNearbySectors([]);
-                onNearbySectorsChange?.([]);
-                try {
-                    const cityName = cities.find(c => c.id === cidade)?.nome || cidade;
-                    const nearby = await getNearbySectorsByOperation(
-                        userPosition,
-                        operacao,
-                        cidade,
-                        cityName,
-                        5000, // maxDistance - 5km temporariamente para debug
-                        3     // maxResults - apenas 3 setores
-                    );
-                    setNearbySectors(nearby);
-                    onNearbySectorsChange?.(nearby);
-                    console.log(`✅ Encontrados ${nearby.length} setores próximos`);
-                } catch (error) {
-                    console.error('Error loading nearby sectors:', error);
-                    setNearbySectors([]);
-                    onNearbySectorsChange?.([]);
-                } finally {
-                    setIsLoadingNearby(false);
-                    onLoadingNearbyChange?.(false);
-                }
-            };
-            loadNearbySectors();
-        } else {
-            setNearbySectors([]);
-            onNearbySectorsChange?.([]);
-        }
-    }, [userPosition, operacao, cidade, cities, onLoadingNearbyChange, onNearbySectorsChange]);
+    // Buscar setores próximos - DESABILITADO TEMPORARIAMENTE
+    // useEffect(() => {
+    //     if (userPosition && operacao && cidade) {
+    //         const loadNearbySectors = async () => {
+    //             setIsLoadingNearby(true);
+    //             onLoadingNearbyChange?.(true);
+    //             setNearbySectors([]);
+    //             onNearbySectorsChange?.([]);
+    //             try {
+    //                 const cityName = cities.find(c => c.id === cidade)?.nome || cidade;
+    //                 const nearby = await getNearbySectorsByOperation(
+    //                     userPosition,
+    //                     operacao,
+    //                     cidade,
+    //                     cityName
+    //                     // Usando valores padrão: 2km, 3 setores
+    //                 );
+    //                 setNearbySectors(nearby);
+    //                 onNearbySectorsChange?.(nearby);
+    //                 console.log(`✅ Encontrados ${nearby.length} setores próximos`);
+    //             } catch (error) {
+    //                 console.error('Error loading nearby sectors:', error);
+    //                 setNearbySectors([]);
+    //                 onNearbySectorsChange?.([]);
+    //             } finally {
+    //                 setIsLoadingNearby(false);
+    //                 onLoadingNearbyChange?.(false);
+    //             }
+    //         };
+    //         loadNearbySectors();
+    //     } else {
+    //         setNearbySectors([]);
+    //         onNearbySectorsChange?.([]);
+    //     }
+    //     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // }, [userPosition, operacao, cidade, cities]);
 
     // Carregar cidades quando operação mudar
     useEffect(() => {
@@ -261,7 +262,8 @@ export const InitialModal: React.FC<InitialModalProps> = ({
             }
         };
         loadCities();
-    }, [operacao, detectedCityId, onOperacaoChange]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [operacao, detectedCityId]);
 
     // Carregar setores quando cidade mudar
     useEffect(() => {

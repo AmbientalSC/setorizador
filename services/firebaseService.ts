@@ -138,7 +138,7 @@ export const getNearbySectorsByOperation = async (
     operacao: string,
     cityId: string,
     cityName: string,
-    maxDistance: number = 5000, // Aumentado para 5km temporariamente para debug
+    maxDistance: number = 2000, // 2km - raio razoável para setores urbanos
     maxResults: number = 3
 ): Promise<NearbySector[]> => {
     const nearbySectors: NearbySector[] = [];
@@ -165,15 +165,7 @@ export const getNearbySectorsByOperation = async (
             try {
                 const geoJSON = await getSectorGeoJSONByOperacao(operacao, cityId, sector.id);
                 if (geoJSON) {
-                    console.log(`🔍 GeoJSON do setor ${sector.nome}:`, {
-                        hasFeatures: !!geoJSON.features,
-                        featuresCount: geoJSON.features?.length,
-                        firstFeatureType: geoJSON.features?.[0]?.geometry?.type,
-                        firstFeatureCoords: geoJSON.features?.[0]?.geometry?.coordinates?.[0]?.[0]
-                    });
-                    
                     const distance = getDistanceToGeoJSON(position, geoJSON);
-                    console.log(`   ${sector.nome}: ${Math.round(distance)}m ${distance <= maxDistance ? '✓' : '✗'}`);
                     
                     if (distance <= maxDistance) {
                         nearbySectors.push({
